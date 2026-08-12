@@ -151,17 +151,80 @@ Explicitly excluded. Documented to prevent scope creep.
 
 ## Traceability
 
-Which phases cover which requirements. **Populated during roadmap creation** (Step 8) — currently unmapped.
+Which phases cover which requirements. Populated during roadmap creation — every v1 requirement maps to exactly one phase.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| _(all v1 requirements)_ | _pending roadmap_ | Pending |
+| BACK-01 | Phase 1 | Pending |
+| BACK-02 | Phase 1 | Pending |
+| BACK-03 | Phase 1 | Pending |
+| BACK-04 | Phase 1 | Pending |
+| BACK-05 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| AUTH-05 | Phase 1 | Pending |
+| AUTH-06 | Phase 1 | Pending |
+| AUTH-07 | Phase 1 | Pending |
+| AUTH-08 | Phase 1 | Pending |
+| CAMP-01 | Phase 1 | Pending |
+| CAMP-02 | Phase 1 | Pending |
+| UI-05 | Phase 1 | Pending |
+| VERF-01 | Phase 2 | Pending |
+| VERF-02 | Phase 2 | Pending |
+| VERF-03 | Phase 2 | Pending |
+| VERF-04 | Phase 2 | Pending |
+| VERF-05 | Phase 2 | Pending |
+| STORE-01 | Phase 2 | Pending |
+| STORE-02 | Phase 2 | Pending |
+| STORE-03 | Phase 2 | Pending |
+| STORE-04 | Phase 2 | Pending |
+| PROD-01 | Phase 2 | Pending |
+| PROD-02 | Phase 2 | Pending |
+| PROD-03 | Phase 2 | Pending |
+| PROD-04 | Phase 2 | Pending |
+| PROD-05 | Phase 2 | Pending |
+| UI-03 | Phase 2 | Pending |
+| DISC-01 | Phase 3 | Pending |
+| DISC-02 | Phase 3 | Pending |
+| DISC-03 | Phase 3 | Pending |
+| DISC-04 | Phase 3 | Pending |
+| DISC-05 | Phase 3 | Pending |
+| CART-01 | Phase 3 | Pending |
+| CART-02 | Phase 3 | Pending |
+| CART-03 | Phase 3 | Pending |
+| CART-04 | Phase 3 | Pending |
+| ORDR-01 | Phase 3 | Pending |
+| ORDR-02 | Phase 3 | Pending |
+| ORDR-03 | Phase 3 | Pending |
+| ORDR-04 | Phase 3 | Pending |
+| ORDR-05 | Phase 3 | Pending |
+| UI-01 | Phase 3 | Pending |
+| UI-02 | Phase 3 | Pending |
+| PAY-01 | Phase 4 | Pending |
+| PAY-02 | Phase 4 | Pending |
+| PAY-03 | Phase 4 | Pending |
+| PAY-04 | Phase 4 | Pending |
+| FULF-01 | Phase 4 | Pending |
+| FULF-02 | Phase 4 | Pending |
+| REV-01 | Phase 5 | Pending |
+| REV-02 | Phase 5 | Pending |
+| REV-03 | Phase 5 | Pending |
+| NOTF-01 | Phase 5 | Pending |
+| NOTF-02 | Phase 5 | Pending |
+| ADMN-01 | Phase 6 | Pending |
+| ADMN-02 | Phase 6 | Pending |
+| ADMN-03 | Phase 6 | Pending |
+| UI-04 | Phase 6 | Pending |
 
 **Coverage:**
 - v1 requirements: 62 total
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 62 ⚠️ (resolved when ROADMAP.md is generated)
+- Mapped to phases: 62 ✓ (every requirement mapped to exactly one phase)
+- Unmapped: 0
+
+**Per-phase counts:** Phase 1 = 16 · Phase 2 = 15 · Phase 3 = 16 · Phase 4 = 6 · Phase 5 = 5 · Phase 6 = 4 (total 62)
 
 ---
 *Requirements defined: 2026-08-12*
-*Last updated: 2026-08-12 after initial definition*
+*Last updated: 2026-08-12 — traceability populated during roadmap creation (62/62 mapped)*
