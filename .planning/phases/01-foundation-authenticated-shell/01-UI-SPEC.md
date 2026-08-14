@@ -58,16 +58,20 @@ Mobile-first: comfortable tap targets ≥44px on every interactive control; inpu
 
 ## Typography
 
-Exactly **4 size roles** for this phase. **Core UI weights = 2: regular 400 + semibold 600** (Plus Jakarta Sans). The **display face (Bricolage Grotesque) is headings-only and ships at a single fixed weight, 800 extrabold** — a display treatment, not a body-weight ramp step (auto-applied to `h1–h4` via `globals.css` with `-0.02em` tracking).
+**Text ramp = 4 roles (Label 14 / Body 16 / Heading 20 / Display 30). UI ramp weights = 2 (regular 400, semibold 600).** Two brand faces sit **outside** the UI ramp and each ships at a **single fixed weight**, distinct from the ramp: the **Bricolage Grotesque display face** (weight **800**, headings-only — auto-applied to `h1–h4` via `globals.css` with `-0.02em` tracking) and the **Space Mono `.eyebrow`** utility (weight **700**). No arbitrary `text-[..]` sizes; no 15px body-large variant.
 
 | Role | Size | Weight | Line Height | Notes |
 |------|------|--------|-------------|-------|
-| Body | 16px | 400 | 1.5 | Default (`font-sans`). Input text sized 16px (`text-base`) to prevent mobile zoom. Form intro paragraphs may use 15px (`text-[15px]`) as a body-large variant. |
-| Label | 14px | 600 | 1.4 | Field labels, links, nav/menu items, buttons. Helper/caption text uses 12px (`text-xs`) at 400. |
-| Heading | 20px | 800 | 1.2 | Section / status-panel headings (`text-xl`, display face). |
-| Display | 30px | 800 | 1.15 | Page H1 — "Log in to your kita.", "Create your account." (`text-3xl`, display face, `leading-tight`). |
+| Label | 14px | 600 (semibold) | 1.4 | Field labels, links, nav/menu items, buttons (`text-sm`). |
+| Body | 16px | 400 (regular) | 1.5 | Default body (`font-sans`, `text-base`); form intro paragraphs and input text all use 16px (also prevents iOS zoom). |
+| Heading | 20px | 800 (Bricolage display face) | 1.2 | Section / status-panel headings (`text-xl`). |
+| Display | 30px | 800 (Bricolage display face) | 1.15 | Page H1 — "Log in to your kita.", "Create your account." (`text-3xl`, `leading-tight`). |
 
-Utility: `.eyebrow` — Space Mono, uppercase, `0.16em` tracking, `0.72rem`, weight 700 — used as the small kicker above headings (e.g. "Welcome back", "Coming soon"). `.tabular` (mono tabular numerals) is defined but not exercised in Phase 1 (no prices yet).
+**Fixed brand utilities — inherited from `globals.css`, OUTSIDE the 4-role ramp (they are not additional ramp steps):**
+- **Caption** — 12px (`text-xs`), weight 400 — helper text, field hints, footnotes, footer metadata.
+- **`.eyebrow`** — Space Mono, uppercase, `0.16em` tracking, `0.72rem`, weight 700 — small kicker above headings ("Welcome back", "Coming soon").
+
+**Weight contract (explicit, internally consistent):** UI ramp = **2 weights — 400 regular + 600 semibold**. Brand faces are single-weight and separate from the UI ramp: **Bricolage display = 800** (headings only), **Space Mono eyebrow = 700**. No other weights are permitted. (`.tabular` mono numerals are defined in `globals.css` but not exercised in Phase 1 — no prices yet.)
 
 ---
 
@@ -148,6 +152,10 @@ Applicable state considerations resolved: **6 covered, 1 backstop, 0 unresolved.
 ---
 
 ## Component Inventory & Refactor Deltas
+
+**Visual hierarchy (primary anchor per screen — so the executor doesn't guess priority):**
+- **Auth screens (login/signup/forgot/reset):** the **form column is the focal point** — it holds the eyebrow → Display H1 → fields → primary CTA. The `AuthBrandPanel` (left, kita-green) is **secondary** context and is hidden below `lg`.
+- **Authenticated shell body:** the **Display heading + the single role-aware CTA** (BUYER "Become a verified seller"; else the "coming soon" area) anchor the composition; everything else is supporting text.
 
 **Reuse (auth):** `app/(auth)/layout.tsx` (split-screen shell, `bg-paper`, footer already reads "Gen. Trias, Cavite"), `components/auth/auth-brand-panel.tsx`, `password-field.tsx`, `account-type-toggle.tsx`, `shared.tsx` (`SubmitButton`, `FieldError`), `components/common/logo.tsx`.
 
