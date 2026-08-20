@@ -16,6 +16,7 @@ import {
 import { createClient } from "@/lib/supabase/server";
 import { ProtectedLayout } from "@/components/shell/protected-layout";
 import { ProductCard, ProductItem } from "@/components/marketplace/product-card";
+import { MOCK_PRODUCTS } from "@/lib/mock-data";
 
 export async function generateMetadata({
   params,
@@ -95,52 +96,59 @@ export default async function ListingDetailsPage({
 
   const { data: dbProduct } = await productQuery.single();
 
-  if (!dbProduct) {
-    notFound();
+  let product: ProductItem;
+
+  if (dbProduct) {
+    const rawCat = Array.isArray(dbProduct.category)
+      ? dbProduct.category[0]
+      : dbProduct.category;
+    const rawStore = Array.isArray(dbProduct.store)
+      ? dbProduct.store[0]
+      : dbProduct.store;
+    const rawImages = Array.isArray(dbProduct.images) ? dbProduct.images : [];
+
+    product = {
+      id: dbProduct.id,
+      title: dbProduct.title,
+      slug: dbProduct.slug,
+      description: dbProduct.description,
+      price: Number(dbProduct.price),
+      stock: dbProduct.stock,
+      status: dbProduct.status as ProductItem["status"],
+      prep_time_minutes: dbProduct.prep_time_minutes,
+      category: {
+        name: rawCat?.name || "Uncategorized",
+        slug: rawCat?.slug || "all",
+      },
+      store: {
+        id: rawStore?.id || "",
+        name: rawStore?.name || "Campus Store",
+        slug: rawStore?.slug || "",
+        logo_url: rawStore?.logo_url || null,
+        pickup_locations: rawStore?.pickup_locations || null,
+        rating_avg: Number(rawStore?.rating_avg || 0),
+        rating_count: Number(rawStore?.rating_count || 0),
+        owner: rawStore?.owner
+          ? Array.isArray(rawStore.owner)
+            ? rawStore.owner[0]
+            : rawStore.owner
+          : undefined,
+      },
+      images: rawImages
+        .map((img) => ({
+          image_url: img.image_url,
+          display_order: img.display_order,
+        }))
+        .sort((a, b) => a.display_order - b.display_order),
+    };
+  } else {
+    // Fallback to MOCK_PRODUCTS
+    const foundMock = MOCK_PRODUCTS.find((p) => p.slug === slug || p.id === slug);
+    if (!foundMock) {
+      notFound();
+    }
+    product = foundMock;
   }
-
-  const rawCat = Array.isArray(dbProduct.category)
-    ? dbProduct.category[0]
-    : dbProduct.category;
-  const rawStore = Array.isArray(dbProduct.store)
-    ? dbProduct.store[0]
-    : dbProduct.store;
-  const rawImages = Array.isArray(dbProduct.images) ? dbProduct.images : [];
-
-  const product: ProductItem = {
-    id: dbProduct.id,
-    title: dbProduct.title,
-    slug: dbProduct.slug,
-    description: dbProduct.description,
-    price: Number(dbProduct.price),
-    stock: dbProduct.stock,
-    status: dbProduct.status as ProductItem["status"],
-    prep_time_minutes: dbProduct.prep_time_minutes,
-    category: {
-      name: rawCat?.name || "Uncategorized",
-      slug: rawCat?.slug || "all",
-    },
-    store: {
-      id: rawStore?.id || "",
-      name: rawStore?.name || "Campus Store",
-      slug: rawStore?.slug || "",
-      logo_url: rawStore?.logo_url || null,
-      pickup_locations: rawStore?.pickup_locations || null,
-      rating_avg: Number(rawStore?.rating_avg || 0),
-      rating_count: Number(rawStore?.rating_count || 0),
-      owner: rawStore?.owner
-        ? Array.isArray(rawStore.owner)
-          ? rawStore.owner[0]
-          : rawStore.owner
-        : undefined,
-    },
-    images: rawImages
-      .map((img) => ({
-        image_url: img.image_url,
-        display_order: img.display_order,
-      }))
-      .sort((a, b) => a.display_order - b.display_order),
-  };
 
   const images =
     product.images && product.images.length > 0
@@ -178,7 +186,7 @@ export default async function ListingDetailsPage({
     .neq("id", product.id)
     .limit(4);
 
-  const relatedProducts: ProductItem[] = (dbRelated || []).map((p) => {
+  let relatedProducts: ProductItem[] = (dbRelated || []).map((p) => {
     const rCat = Array.isArray(p.category) ? p.category[0] : p.category;
     const rStore = Array.isArray(p.store) ? p.store[0] : p.store;
     const rImages = Array.isArray(p.images) ? p.images : [];
@@ -214,6 +222,13 @@ export default async function ListingDetailsPage({
         .sort((a, b) => a.display_order - b.display_order),
     };
   });
+
+  if (relatedProducts.length === 0) {
+    relatedProducts = MOCK_PRODUCTS.filter((p) => p.id !== product.id && p.category.slug === product.category.slug).slice(0, 4);
+    if (relatedProducts.length === 0) {
+      relatedProducts = MOCK_PRODUCTS.filter((p) => p.id !== product.id).slice(0, 4);
+    }
+  }
 
   return (
     <ProtectedLayout user={user} profile={profile}>

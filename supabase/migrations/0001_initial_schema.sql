@@ -282,6 +282,14 @@ CREATE TRIGGER on_review_created
 -- Row Level Security (RLS) Policies
 -- ============================================================================
 
+-- Schema Grants for Supabase Roles
+GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+GRANT ALL ON ALL ROUTINES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+
+ALTER TABLE campuses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE student_verifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stores ENABLE ROW LEVEL SECURITY;
@@ -296,6 +304,10 @@ ALTER TABLE fulfillments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+
+-- Campuses & Categories Policies
+CREATE POLICY "Campuses viewable by everyone" ON campuses FOR SELECT USING (true);
+CREATE POLICY "Categories viewable by everyone" ON categories FOR SELECT USING (true);
 
 -- Profiles Policies
 CREATE POLICY "Public profiles are viewable by authenticated users"

@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 // ZOD SCHEMAS
 // ------------------------------------------------------------
 
-export const SignupSchema = z.object({
+const SignupSchema = z.object({
   name: z.string().trim().min(2, "Tell us your name (at least 2 characters)."),
   email: z.string().trim().email("That doesn't look like a valid email."),
   password: z.string().min(8, "Use a password with at least 8 characters."),
@@ -18,17 +18,17 @@ export const SignupSchema = z.object({
   accountType: z.enum(["buyer", "seller"]).default("buyer"),
 });
 
-export const LoginSchema = z.object({
+const LoginSchema = z.object({
   email: z.string().trim().email("Enter your school email."),
   password: z.string().min(1, "Enter your password."),
   next: z.string().optional(),
 });
 
-export const ForgotPasswordSchema = z.object({
+const ForgotPasswordSchema = z.object({
   email: z.string().trim().email("Enter your school email."),
 });
 
-export const ResetPasswordSchema = z
+const ResetPasswordSchema = z
   .object({
     password: z.string().min(8, "Use at least 8 characters."),
     confirmPassword: z.string().min(1, "Confirm your password."),

@@ -11,7 +11,7 @@ import {
 import { ProductCard, ProductItem } from "./product-card";
 import { ProductDetailModal } from "./product-detail-modal";
 import { useMockData } from "@/lib/mock-data-context";
-import { MOCK_PRODUCTS } from "@/lib/mock-data";
+import { MOCK_PRODUCTS, MOCK_CATEGORIES } from "@/lib/mock-data";
 
 interface MarketplaceViewProps {
   initialCategories: Category[];
@@ -27,6 +27,7 @@ export function MarketplaceView({
   showCta = false,
 }: MarketplaceViewProps) {
   const { useMockData: isMockActive } = useMockData();
+  const categoriesList = initialCategories && initialCategories.length > 0 ? initialCategories : MOCK_CATEGORIES;
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "price-asc" | "price-desc">("newest");
@@ -37,7 +38,7 @@ export function MarketplaceView({
 
   // Combine live DB products with mock products when Demo Mode is toggled ON
   const activeProductList = useMemo(() => {
-    if (isMockActive) {
+    if (isMockActive || initialProducts.length === 0) {
       // Merge live + mock, preventing duplicate IDs
       const liveIds = new Set(initialProducts.map((p) => p.id));
       const filteredMock = MOCK_PRODUCTS.filter((m) => !liveIds.has(m.id));
@@ -101,7 +102,7 @@ export function MarketplaceView({
   const selectedCategoryName =
     selectedCategory === "all"
       ? "All Campus Listings"
-      : initialCategories.find((c) => c.slug === selectedCategory)?.name || "Category Items";
+      : categoriesList.find((c) => c.slug === selectedCategory)?.name || "Category Items";
 
   return (
     <div className="flex flex-col gap-8">
@@ -133,7 +134,7 @@ export function MarketplaceView({
         {/* Left Desktop Sidebar Filter Panel (3 Cols) */}
         <aside className="hidden lg:block lg:col-span-3 sticky top-20">
           <MarketplaceSidebarFilters
-            categories={initialCategories}
+            categories={categoriesList}
             selectedCategory={selectedCategory}
             onSelectCategory={setSelectedCategory}
             sortBy={sortBy}
@@ -159,7 +160,7 @@ export function MarketplaceView({
                 <X className="h-5 w-5" />
               </button>
               <MarketplaceSidebarFilters
-                categories={initialCategories}
+                categories={categoriesList}
                 selectedCategory={selectedCategory}
                 onSelectCategory={(slug) => {
                   setSelectedCategory(slug);

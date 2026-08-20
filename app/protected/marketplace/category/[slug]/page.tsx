@@ -7,6 +7,7 @@ import { ProtectedLayout } from "@/components/shell/protected-layout";
 import { MarketplaceView } from "@/components/marketplace/marketplace-view";
 import { ProductItem } from "@/components/marketplace/product-card";
 import { Category } from "@/components/marketplace/marketplace-filters";
+import { MOCK_CATEGORIES, MOCK_PRODUCTS } from "@/lib/mock-data";
 
 export async function generateMetadata({
   params,
@@ -54,12 +55,16 @@ export default async function CategoryPage({
     .select("id, name, slug, icon")
     .order("name");
 
-  const categories: Category[] = (dbCategories || []).map((c) => ({
+  let categories: Category[] = (dbCategories || []).map((c) => ({
     id: c.id,
     name: c.name,
     slug: c.slug,
     icon: c.icon,
   }));
+
+  if (categories.length === 0) {
+    categories = MOCK_CATEGORIES;
+  }
 
   const activeCat = categories.find((c) => c.slug === slug);
 
@@ -90,13 +95,13 @@ export default async function CategoryPage({
     `)
     .eq("status", "ACTIVE");
 
-  if (activeCat) {
+  if (activeCat && activeCat.id) {
     query = query.eq("category_id", activeCat.id);
   }
 
   const { data: dbProducts } = await query.order("created_at", { ascending: false });
 
-  const products: ProductItem[] = (dbProducts || []).map((p) => {
+  let products: ProductItem[] = (dbProducts || []).map((p) => {
     const rawCategory = Array.isArray(p.category) ? p.category[0] : p.category;
     const rawStore = Array.isArray(p.store) ? p.store[0] : p.store;
     const rawImages = Array.isArray(p.images) ? p.images : [];
@@ -132,6 +137,13 @@ export default async function CategoryPage({
         .sort((a, b) => a.display_order - b.display_order),
     };
   });
+
+  if (products.length === 0) {
+    products = MOCK_PRODUCTS.filter((p) => p.category.slug === slug);
+    if (products.length === 0) {
+      products = MOCK_PRODUCTS;
+    }
+  }
 
   const userRole = profile?.role || "BUYER";
   const categoryName = activeCat?.name || slug.split("-").join(" ");

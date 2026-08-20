@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface MockDataContextType {
   useMockData: boolean;
@@ -9,7 +9,7 @@ interface MockDataContextType {
 }
 
 const MockDataContext = createContext<MockDataContextType>({
-  useMockData: false,
+  useMockData: true,
   toggleMockData: () => {},
   setUseMockData: () => {},
 });
@@ -17,14 +17,21 @@ const MockDataContext = createContext<MockDataContextType>({
 const STORAGE_KEY = "projectkita_use_mock_data";
 
 export function MockDataProvider({ children }: { children: React.ReactNode }) {
-  const [useMockDataState, setUseMockDataState] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
+  const [useMockDataState, setUseMockDataState] = useState<boolean>(true);
+
+  useEffect(() => {
     try {
-      return localStorage.getItem(STORAGE_KEY) === "true";
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === "false") {
+        setUseMockDataState(false);
+      } else if (stored === null) {
+        // Explicitly store default true
+        localStorage.setItem(STORAGE_KEY, "true");
+      }
     } catch {
-      return false;
+      // Ignore
     }
-  });
+  }, []);
 
   function setUseMockData(val: boolean) {
     setUseMockDataState(val);

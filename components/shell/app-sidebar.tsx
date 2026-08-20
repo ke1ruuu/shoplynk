@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -34,16 +34,19 @@ interface AppSidebarProps {
 
 export function AppSidebar({ user, profile }: AppSidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return localStorage.getItem("projectkita_sidebar_collapsed") === "true";
-    } catch {
-      return false;
-    }
-  });
+  const [collapsed, setCollapsed] = useState<boolean>(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("projectkita_sidebar_collapsed") === "true") {
+        setCollapsed(true);
+      }
+    } catch {
+      // Ignore
+    }
+  }, []);
 
   function toggleCollapse() {
     const next = !collapsed;

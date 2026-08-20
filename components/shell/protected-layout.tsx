@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AppSidebar } from "./app-sidebar";
 import { MockDataProvider } from "@/lib/mock-data-context";
 
@@ -20,14 +20,17 @@ interface ProtectedLayoutProps {
 }
 
 export function ProtectedLayout({ user, profile, children }: ProtectedLayoutProps) {
-  const [collapsed] = useState<boolean>(() => {
-    if (typeof window === "undefined") return false;
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+
+  useEffect(() => {
     try {
-      return localStorage.getItem("projectkita_sidebar_collapsed") === "true";
+      if (localStorage.getItem("projectkita_sidebar_collapsed") === "true") {
+        setCollapsed(true);
+      }
     } catch {
-      return false;
+      // Ignore
     }
-  });
+  }, []);
 
   return (
     <MockDataProvider>
