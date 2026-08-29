@@ -80,7 +80,7 @@ export function ForSellersSection() {
 
             {/* Earnings dashboard */}
             <div className="absolute -bottom-6 -left-2 sm:left-4 -rotate-2 bg-surface p-4 rounded-2xl border border-line shadow-flyer-lg w-60 sm:w-64">
-              <span className="pin -top-1.5 right-4" style={{ "--pin-color": "#0C6B4E" } as React.CSSProperties} aria-hidden="true" />
+              <span className="pin -top-1.5 right-4" style={{ "--pin-color": "#D92323" } as React.CSSProperties} aria-hidden="true" />
               <div className="flex items-center justify-between">
                 <div>
                   <span className="eyebrow text-muted text-[0.6rem]">Total kita</span>

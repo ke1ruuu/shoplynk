@@ -3,6 +3,8 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { setSessionCookie, clearSessionCookie, getCurrentUser } from "@/lib/auth/session";
 
 // ------------------------------------------------------------
 // ZOD SCHEMAS
@@ -19,13 +21,13 @@ const SignupSchema = z.object({
 });
 
 const LoginSchema = z.object({
-  email: z.string().trim().email("Enter your school email."),
+  email: z.string().trim().email("Please enter a valid email address."),
   password: z.string().min(1, "Enter your password."),
   next: z.string().optional(),
 });
 
 const ForgotPasswordSchema = z.object({
-  email: z.string().trim().email("Enter your school email."),
+  email: z.string().trim().email("Please enter a valid email address."),
 });
 
 const ResetPasswordSchema = z
@@ -53,8 +55,8 @@ export type AuthFormState = {
 // ------------------------------------------------------------
 
 /**
- * Sign up action — calls Supabase Auth signUp with metadata.
- * Triggers handle_new_user DB function to provision profile + cart.
+ * Sign up action — creates profile directly in PostgreSQL with hashed password,
+ * provisions initial cart, establishes session cookie, and redirects to dashboard.
  */
 export async function signupAction(
   prevState: AuthFormState,
@@ -76,39 +78,69 @@ export async function signupAction(
     };
   }
 
-  const { name, email, password } = parsed.data;
+  const { name, email, password, accountType } = parsed.data;
   const supabase = await createClient();
 
-  const origin = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-  const redirectTo = origin
-    ? `${origin}/auth/confirm`
-    : undefined;
+  // 1. Check if an account already exists with this email
+  const { data: existingUser } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("email", email.trim())
+    .maybeSingle();
 
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      data: {
-        full_name: name,
-      },
-      emailRedirectTo: redirectTo,
-    },
-  });
-
-  if (error) {
+  if (existingUser) {
     return {
-      message: error.message,
+      message: "An account with this email already exists. Please log in instead.",
     };
   }
 
-  return {
-    success: true,
-    message: "Check your email to confirm your account.",
-  };
+  // 2. Hash password securely
+  const passwordHash = await hashPassword(password);
+
+  // 3. Insert profile into database
+  const { data: newProfile, error: insertError } = await supabase
+    .from("profiles")
+    .insert({
+      email: email.toLowerCase().trim(),
+      full_name: name.trim(),
+      role: accountType === "seller" ? "SELLER" : "BUYER",
+      password_hash: passwordHash,
+    })
+    .select("id, email, full_name, role")
+    .single();
+
+  if (insertError || !newProfile) {
+    if (insertError?.message?.includes("password_hash") || insertError?.code === "PGRST204") {
+      return {
+        message: "Database column 'password_hash' not found. Please run migration 0002_custom_auth.sql in your Supabase SQL Editor.",
+      };
+    }
+    return {
+      message: insertError?.message || "Failed to create account. Please try again.",
+    };
+  }
+
+  // 5. Provision cart for user
+  await supabase
+    .from("carts")
+    .insert({ user_id: newProfile.id })
+    .select("id")
+    .maybeSingle();
+
+  // 6. Establish session cookie
+  await setSessionCookie({
+    id: newProfile.id,
+    email: newProfile.email,
+    full_name: newProfile.full_name,
+    role: newProfile.role,
+  });
+
+  // 7. Direct redirect into the app
+  redirect("/protected");
 }
 
 /**
- * Log in action — calls Supabase Auth signInWithPassword.
+ * Log in action — verifies email and hashed password against database profiles.
  */
 export async function loginAction(
   prevState: AuthFormState,
@@ -131,31 +163,124 @@ export async function loginAction(
   const { email, password, next } = parsed.data;
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  // 1. Fetch user by email (case-insensitive)
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, role, password_hash")
+    .ilike("email", email.trim())
+    .maybeSingle();
 
   if (error) {
+    if (error.message?.includes("password_hash") || error.code === "PGRST204") {
+      return {
+        message: "Database column 'password_hash' not found. Please run migration 0002_custom_auth.sql in your Supabase SQL Editor.",
+      };
+    }
     return {
       message: "Invalid email or password. Please try again.",
     };
   }
 
-  redirect(next || "/protected");
+  if (!profile || !profile.password_hash) {
+    return {
+      message: "Invalid email or password. Please try again.",
+    };
+  }
+
+  // 2. Verify hashed password
+  const isValid = await verifyPassword(password, profile.password_hash);
+  if (!isValid) {
+    return {
+      message: "Invalid email or password. Please try again.",
+    };
+  }
+
+  // 3. Set authenticated session cookie
+  await setSessionCookie({
+    id: profile.id,
+    email: profile.email,
+    full_name: profile.full_name,
+    role: profile.role,
+  });
+
+  const isAdmin = profile.role === "CAMPUS_ADMIN" || profile.role === "PLATFORM_ADMIN";
+  const destination = isAdmin ? "/admin" : (next && next !== "/admin" ? next : "/protected");
+
+  redirect(destination);
 }
 
 /**
- * Log out action — signs out and redirects to /login.
+ * Dedicated Admin Portal Log in action — verifies admin credentials.
+ */
+export async function adminLoginAction(
+  prevState: AuthFormState,
+  formData: FormData
+): Promise<AuthFormState> {
+  const rawData = {
+    email: formData.get("email"),
+    password: formData.get("password"),
+    next: "/admin",
+  };
+
+  const parsed = LoginSchema.safeParse(rawData);
+  if (!parsed.success) {
+    return {
+      errors: parsed.error.flatten().fieldErrors,
+    };
+  }
+
+  const { email, password } = parsed.data;
+  const supabase = await createClient();
+
+  // 1. Fetch user profile
+  const { data: profile, error } = await supabase
+    .from("profiles")
+    .select("id, email, full_name, role, password_hash")
+    .ilike("email", email.trim())
+    .maybeSingle();
+
+  if (error || !profile || !profile.password_hash) {
+    return {
+      message: "Invalid administrator credentials.",
+    };
+  }
+
+  // 2. Strict Role Check: Must be CAMPUS_ADMIN or PLATFORM_ADMIN
+  if (profile.role !== "CAMPUS_ADMIN" && profile.role !== "PLATFORM_ADMIN") {
+    return {
+      message: "Access Denied: This portal is strictly restricted to Campus Administrators. Students must log in through the student marketplace.",
+    };
+  }
+
+  // 3. Verify hashed password
+  const isValid = await verifyPassword(password, profile.password_hash);
+  if (!isValid) {
+    return {
+      message: "Invalid administrator credentials.",
+    };
+  }
+
+  // 4. Set session cookie
+  await setSessionCookie({
+    id: profile.id,
+    email: profile.email,
+    full_name: profile.full_name,
+    role: profile.role,
+  });
+
+  redirect("/admin");
+}
+
+/**
+ * Log out action — clears session cookie and redirects to /login.
  */
 export async function logoutAction(): Promise<never> {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
+  await clearSessionCookie();
   redirect("/login");
 }
 
 /**
- * Forgot password action — sends password reset link.
+ * Forgot password action — records recovery request for custom auth.
  */
 export async function forgotPasswordAction(
   prevState: AuthFormState,
@@ -176,27 +301,29 @@ export async function forgotPasswordAction(
   const { email } = parsed.data;
   const supabase = await createClient();
 
-  const origin = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
-  const redirectTo = origin ? `${origin}/auth/confirm?type=recovery` : undefined;
+  // Check if profile exists
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id")
+    .ilike("email", email.trim())
+    .maybeSingle();
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo,
-  });
-
-  if (error) {
+  if (!profile) {
+    // Avoid leaking whether email exists
     return {
-      message: error.message,
+      success: true,
+      message: "If an account exists with this email, password reset instructions have been logged.",
     };
   }
 
   return {
     success: true,
-    message: "Password reset link sent! Check your inbox.",
+    message: "If an account exists with this email, password reset instructions have been logged.",
   };
 }
 
 /**
- * Reset password action — updates user password once authenticated via recovery link.
+ * Reset password action — updates user's password hash in profiles.
  */
 export async function resetPasswordAction(
   prevState: AuthFormState,
@@ -215,10 +342,21 @@ export async function resetPasswordAction(
     };
   }
 
+  const user = await getCurrentUser();
+  if (!user) {
+    return {
+      message: "Session expired. Please log in again.",
+    };
+  }
+
   const { password } = parsed.data;
+  const passwordHash = await hashPassword(password);
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.updateUser({ password });
+  const { error } = await supabase
+    .from("profiles")
+    .update({ password_hash: passwordHash, updated_at: new Date().toISOString() })
+    .eq("id", user.id);
 
   if (error) {
     return {

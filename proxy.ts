@@ -1,41 +1,70 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/proxy";
+import { getSessionFromRequest } from "@/lib/auth/session";
 
 /**
- * Next.js 16 Proxy handler for session refresh & campus-gated route access.
+ * Next.js 16 Proxy handler for session verification & campus-gated route access.
  */
 export async function proxy(request: NextRequest) {
-  const { supabaseResponse, user } = await updateSession(request);
+  const user = getSessionFromRequest(request);
   const { pathname } = request.nextUrl;
 
-  // Gated route prefixes (authenticated shell & dashboards)
-  const isGatedRoute =
+  const isAdmin = user?.role === "CAMPUS_ADMIN" || user?.role === "PLATFORM_ADMIN";
+
+  // Dedicated Admin Login Route
+  const isAdminLoginRoute = pathname === "/admin/login";
+
+  // Protected Admin Console routes
+  const isAdminGatedRoute = pathname.startsWith("/admin") && !isAdminLoginRoute;
+
+  // General Gated route prefixes (buyer/seller protected shell)
+  const isStudentGatedRoute =
     pathname.startsWith("/protected") ||
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/seller") ||
-    pathname.startsWith("/admin") ||
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/cart");
 
-  // Auth-only public routes (login/signup)
-  const isAuthRoute =
+  // Student Auth-only public routes (login/signup)
+  const isStudentAuthRoute =
     pathname.startsWith("/login") ||
     pathname.startsWith("/signup") ||
     pathname.startsWith("/forgot-password");
 
-  // 1. Unauthenticated user trying to access gated area -> redirect to login
-  if (!user && isGatedRoute) {
+  // 1. Unauthenticated user visiting Admin Console -> redirect to dedicated Admin Login
+  if (!user && isAdminGatedRoute) {
+    return NextResponse.redirect(new URL("/admin/login", request.url));
+  }
+
+  // 2. Unauthenticated user visiting student gated area -> redirect to Student Login
+  if (!user && isStudentGatedRoute) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // 2. Authenticated user visiting auth routes -> redirect to authenticated app shell
-  if (user && isAuthRoute) {
-    return NextResponse.redirect(new URL("/protected", request.url));
+  // 3. Unauthenticated user visiting /admin/login -> allow access
+  if (!user && isAdminLoginRoute) {
+    return NextResponse.next();
   }
 
-  return supabaseResponse;
+  // 4. Authenticated Admin visiting login pages or student routes -> redirect to Admin Console
+  if (user && isAdmin) {
+    if (isAdminLoginRoute || isStudentAuthRoute || isStudentGatedRoute || pathname === "/") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+  }
+
+  // 5. Authenticated Student (Buyer/Seller) visiting Admin routes -> redirect to Student Dashboard
+  if (user && !isAdmin) {
+    if (pathname.startsWith("/admin")) {
+      return NextResponse.redirect(new URL("/protected", request.url));
+    }
+    if (isStudentAuthRoute) {
+      return NextResponse.redirect(new URL("/protected", request.url));
+    }
+  }
+
+  return NextResponse.next();
 }
 
 export const config = {

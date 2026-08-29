@@ -11,12 +11,12 @@ import {
   MapPin,
   ShoppingBag,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserProfile } from "@/lib/auth/session";
 import { ProtectedLayout } from "@/components/shell/protected-layout";
 
 export const metadata: Metadata = {
   title: "Dashboard Home — Project Kita",
-  description: "Authenticated member dashboard for LYFJSHS campus community.",
+  description: "Authenticated member dashboard for campus community.",
 };
 
 const SEEDED_CATEGORIES = [
@@ -28,26 +28,20 @@ const SEEDED_CATEGORIES = [
 ];
 
 export default async function ProtectedDashboardHomePage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getCurrentUserProfile();
 
   if (!user) {
     redirect("/login");
   }
 
-  // 1. Fetch user profile from Supabase
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*, campuses(name, code)")
-    .eq("id", user.id)
-    .single();
+  // Admins only access the Admin Console
+  if (profile?.role === "CAMPUS_ADMIN" || profile?.role === "PLATFORM_ADMIN") {
+    redirect("/admin");
+  }
 
   const displayName =
     profile?.full_name || user.user_metadata?.full_name || "Member";
-  const campusName = profile?.campuses?.name || "Luis Y. Ferrer Jr. Senior High School";
+  const schoolName = "Luis Y. Ferrer Jr. Senior High School";
 
   return (
     <ProtectedLayout user={user} profile={profile}>
@@ -72,7 +66,7 @@ export default async function ProtectedDashboardHomePage() {
             </h1>
             <p className="text-base text-white/85 leading-relaxed">
               You are signed into the private campus marketplace for{" "}
-              <span className="font-semibold text-white">{campusName}</span>.
+              <span className="font-semibold text-white">{schoolName}</span>.
             </p>
           </div>
         </section>
@@ -115,23 +109,37 @@ export default async function ProtectedDashboardHomePage() {
               <div className="flex items-center justify-between">
                 <span className="eyebrow text-spark-ink flex items-center gap-1.5">
                   <Store className="h-3.5 w-3.5" />
-                  Student Entrepreneur
+                  {profile?.role === "SELLER" ? "Verified Seller" : "Student Entrepreneur"}
                 </span>
                 <Sparkles className="h-4 w-4 text-spark-ink" />
               </div>
               <h2 className="font-display text-2xl font-extrabold text-ink">
-                Start Selling on Campus
+                {profile?.role === "SELLER"
+                  ? "Seller Studio & Inventory"
+                  : "Start Selling on Campus"}
               </h2>
               <p className="text-sm text-muted leading-relaxed">
-                Submit your student ID verification to unlock storefront creation, catalog management, and order fulfillment.
+                {profile?.role === "SELLER"
+                  ? "Manage your campus store catalog, add new products, adjust inventory, and fulfill student orders."
+                  : "Submit your student ID verification to unlock storefront creation, catalog management, and order fulfillment."}
               </p>
             </div>
 
             <Link
-              href="/seller/verification"
+              href={
+                profile?.role === "SELLER" ||
+                profile?.role === "CAMPUS_ADMIN" ||
+                profile?.role === "PLATFORM_ADMIN"
+                  ? "/seller"
+                  : "/seller/verification"
+              }
               className="group inline-flex items-center justify-center gap-2 rounded-xl bg-kita-green px-6 py-3.5 text-base font-semibold text-white shadow-flyer transition-all hover:bg-kita-green-deep"
             >
-              <span>Get Verified to Sell</span>
+              <span>
+                {profile?.role === "SELLER"
+                  ? "Open Seller Studio"
+                  : "Get Verified to Sell"}
+              </span>
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
@@ -184,7 +192,7 @@ export default async function ProtectedDashboardHomePage() {
           </div>
           <div className="flex items-center gap-1 text-ink font-semibold">
             <MapPin className="h-3.5 w-3.5 text-kita-green" />
-            <span>{campusName}</span>
+            <span>{schoolName}</span>
           </div>
         </div>
       </main>

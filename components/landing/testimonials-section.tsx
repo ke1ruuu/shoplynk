@@ -78,7 +78,7 @@ export function TestimonialsSection() {
               >
                 <span
                   className="pin left-1/2 -translate-x-1/2 -top-1.5"
-                  style={t.isFaculty ? undefined : ({ "--pin-color": "#0C6B4E" } as React.CSSProperties)}
+                  style={t.isFaculty ? undefined : ({ "--pin-color": "#D92323" } as React.CSSProperties)}
                   aria-hidden="true"
                 />
                 <div className="flex flex-col gap-4">

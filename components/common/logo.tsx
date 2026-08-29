@@ -6,6 +6,7 @@ interface LogoProps {
   size?: "sm" | "md" | "lg";
   tone?: "light" | "dark";
   className?: string;
+  href?: string;
 }
 
 export function Logo({
@@ -13,6 +14,7 @@ export function Logo({
   size = "md",
   tone = "light",
   className = "",
+  href = "/",
 }: LogoProps) {
   const markSizes = {
     sm: "w-8 h-8 text-base rounded-lg",
@@ -34,7 +36,7 @@ export function Logo({
 
   return (
     <Link
-      href="/"
+      href={href}
       aria-label="Project Kita — home"
       className={`inline-flex items-center gap-2.5 group cursor-pointer ${className}`}
     >

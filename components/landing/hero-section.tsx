@@ -143,7 +143,7 @@ export function HeroSection() {
                     href="/signup?type=seller"
                     className="group rotate-1 hover:rotate-0 relative bg-spark rounded-2xl border border-spark-deep/30 shadow-flyer hover:shadow-flyer-lg hover:-translate-y-1.5 transition-all p-4 flex flex-col gap-2"
                   >
-                    <span className="pin left-1/2 -translate-x-1/2 -top-1.5" style={{ "--pin-color": "#0C6B4E" } as React.CSSProperties} aria-hidden="true" />
+                    <span className="pin left-1/2 -translate-x-1/2 -top-1.5" style={{ "--pin-color": "#D92323" } as React.CSSProperties} aria-hidden="true" />
                     <span className="eyebrow text-spark-ink">Your turn</span>
                     <span className="font-display font-extrabold text-ink text-lg leading-tight">
                       Got something to sell?

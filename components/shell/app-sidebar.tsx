@@ -7,6 +7,8 @@ import {
   Home,
   LayoutGrid,
   Store,
+  Shield,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   LogOut,
@@ -66,6 +68,7 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
 
   const name = profile?.full_name || user.user_metadata?.full_name || "Member";
   const role = profile?.role || "BUYER";
+  const isAdmin = role === "CAMPUS_ADMIN" || role === "PLATFORM_ADMIN";
 
   const initials = name
     .split(" ")
@@ -77,6 +80,9 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
   const isHomeActive = pathname === "/protected";
   const isMarketplaceActive = pathname.startsWith("/protected/marketplace");
   const isSellerActive = pathname.startsWith("/seller");
+  const isVerificationsActive = pathname === "/admin" || pathname === "/admin/verifications";
+  const isStoresActive = pathname.startsWith("/admin/stores");
+  const isAnalyticsActive = pathname.startsWith("/admin/analytics");
 
   return (
     <>
@@ -91,13 +97,13 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Logo size="sm" showTagline={false} />
+          <Logo size="sm" showTagline={false} href={isAdmin ? "/admin" : "/"} />
         </div>
 
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-1 rounded-full bg-kita-green-soft px-2.5 py-0.5 text-xs font-semibold text-kita-green">
             <MapPin className="h-3 w-3" />
-            <span>LYFJSHS</span>
+            <span>{isAdmin ? "Admin Console" : "LYFJSHS"}</span>
           </div>
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-kita-green text-xs font-bold text-white shadow-flyer">
             {initials}
@@ -123,7 +129,7 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
         <div className="flex flex-col gap-3 p-4 border-b border-line">
           <div className="flex items-center justify-between">
             {(!collapsed || mobileOpen) ? (
-              <Logo size="sm" showTagline={false} />
+              <Logo size="sm" showTagline={false} href={isAdmin ? "/admin" : "/"} />
             ) : (
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-kita-green text-white font-display font-extrabold shadow-flyer mx-auto">
                 K
@@ -154,11 +160,15 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
             )}
           </div>
 
-          {/* Pilot Campus Badge */}
+          {/* Pilot Campus / Admin Badge */}
           {(!collapsed || mobileOpen) && (
             <div className="flex items-center gap-1.5 rounded-xl border border-kita-green/20 bg-kita-green-soft px-3 py-1.5 text-xs font-semibold text-kita-green">
-              <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="truncate">LYFJSHS Campus</span>
+              {isAdmin ? (
+                <Shield className="h-3.5 w-3.5 flex-shrink-0" />
+              ) : (
+                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+              )}
+              <span className="truncate">{isAdmin ? "Campus Administrator" : "LYFJSHS Campus"}</span>
             </div>
           )}
         </div>
@@ -166,56 +176,108 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
         {/* Navigation Items */}
         <div className="flex-1 overflow-y-auto p-3 flex flex-col justify-between">
           <nav className="flex flex-col gap-1.5">
-            {/* Dashboard Home */}
-            <Link
-              href="/protected"
-              onClick={() => setMobileOpen(false)}
-              className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
-                isHomeActive
-                  ? "bg-kita-green text-white shadow-flyer"
-                  : "text-muted hover:bg-paper hover:text-ink"
-              } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
-              title="Dashboard"
-            >
-              <Home className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
-              {(!collapsed || mobileOpen) && <span>Home</span>}
-            </Link>
+            {isAdmin ? (
+              /* Admin Only Navigation (Zero Buyer / Seller Stuff) */
+              <>
+                <Link
+                  href="/admin"
+                  onClick={() => setMobileOpen(false)}
+                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                    isVerificationsActive
+                      ? "bg-kita-green text-white shadow-flyer"
+                      : "text-muted hover:bg-paper hover:text-ink"
+                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  title="Seller Verifications"
+                >
+                  <Shield className="h-5 w-5 flex-shrink-0 text-spark-ink transition-transform group-hover:scale-105" />
+                  {(!collapsed || mobileOpen) && <span>Seller Verifications</span>}
+                </Link>
 
-            {/* Marketplace */}
-            <Link
-              href="/protected/marketplace"
-              onClick={() => setMobileOpen(false)}
-              className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
-                isMarketplaceActive
-                  ? "bg-kita-green text-white shadow-flyer"
-                  : "text-muted hover:bg-paper hover:text-ink"
-              } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
-              title="Marketplace"
-            >
-              <LayoutGrid className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
-              {(!collapsed || mobileOpen) && <span>Marketplace</span>}
-            </Link>
+                <Link
+                  href="/admin/stores"
+                  onClick={() => setMobileOpen(false)}
+                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                    isStoresActive
+                      ? "bg-kita-green text-white shadow-flyer"
+                      : "text-muted hover:bg-paper hover:text-ink"
+                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  title="Campus Stores"
+                >
+                  <Store className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                  {(!collapsed || mobileOpen) && <span>Campus Stores</span>}
+                </Link>
 
-            {/* Seller Studio Area Link */}
-            <Link
-              href="/seller/verification"
-              onClick={() => setMobileOpen(false)}
-              className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
-                isSellerActive
-                  ? "bg-kita-green text-white shadow-flyer"
-                  : "text-muted hover:bg-paper hover:text-ink"
-              } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
-              title="Seller Studio"
-            >
-              <Store className="h-5 w-5 flex-shrink-0 text-spark-ink transition-transform group-hover:scale-105" />
-              {(!collapsed || mobileOpen) && <span>Seller Studio</span>}
-            </Link>
+                <Link
+                  href="/admin/analytics"
+                  onClick={() => setMobileOpen(false)}
+                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                    isAnalyticsActive
+                      ? "bg-kita-green text-white shadow-flyer"
+                      : "text-muted hover:bg-paper hover:text-ink"
+                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  title="Campus Analytics"
+                >
+                  <BarChart3 className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                  {(!collapsed || mobileOpen) && <span>Campus Analytics</span>}
+                </Link>
+              </>
+            ) : (
+              /* Buyer / Seller Navigation */
+              <>
+                {/* Dashboard Home */}
+                <Link
+                  href="/protected"
+                  onClick={() => setMobileOpen(false)}
+                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                    isHomeActive
+                      ? "bg-kita-green text-white shadow-flyer"
+                      : "text-muted hover:bg-paper hover:text-ink"
+                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  title="Dashboard"
+                >
+                  <Home className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                  {(!collapsed || mobileOpen) && <span>Home</span>}
+                </Link>
+
+                {/* Marketplace */}
+                <Link
+                  href="/protected/marketplace"
+                  onClick={() => setMobileOpen(false)}
+                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                    isMarketplaceActive
+                      ? "bg-kita-green text-white shadow-flyer"
+                      : "text-muted hover:bg-paper hover:text-ink"
+                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  title="Marketplace"
+                >
+                  <LayoutGrid className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                  {(!collapsed || mobileOpen) && <span>Marketplace</span>}
+                </Link>
+
+                {/* Seller Studio Area Link */}
+                <Link
+                  href={role === "SELLER" ? "/seller" : "/seller/verification"}
+                  onClick={() => setMobileOpen(false)}
+                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                    isSellerActive
+                      ? "bg-kita-green text-white shadow-flyer"
+                      : "text-muted hover:bg-paper hover:text-ink"
+                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  title="Seller Studio"
+                >
+                  <Store className="h-5 w-5 flex-shrink-0 text-spark-ink transition-transform group-hover:scale-105" />
+                  {(!collapsed || mobileOpen) && <span>Seller Studio</span>}
+                </Link>
+              </>
+            )}
           </nav>
 
-          {/* Dev / Beta Demo Data Toggle */}
-          <div className="pt-4">
-            <MockDataToggle collapsed={collapsed && !mobileOpen} />
-          </div>
+          {/* Dev / Beta Demo Data Toggle (non-admin only) */}
+          {role !== "CAMPUS_ADMIN" && role !== "PLATFORM_ADMIN" && (
+            <div className="pt-4">
+              <MockDataToggle collapsed={collapsed && !mobileOpen} />
+            </div>
+          )}
         </div>
 
         {/* User Profile Footer */}

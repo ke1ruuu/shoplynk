@@ -19,25 +19,29 @@
   --font-display: "Bricolage Grotesque", var(--font-bricolage), "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Space Mono", var(--font-space-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
 
-  /* Brand palette */
-  --color-ink: #16241D;
-  --color-ink-soft: #34433B;
-  --color-muted: #4F5B53;
-  --color-paper: #F4F3EA;
-  --color-paper-deep: #ECEBDD;
+  /* Brand palette — Vibrant Campus Crimson Red & Warm Paper */
+  --color-ink: #1F1315;
+  --color-ink-soft: #3B2629;
+  --color-muted: #5E464A;
+  --color-paper: #FAF6F5;
+  --color-paper-deep: #F3EAE8;
   --color-surface: #FFFFFF;
 
-  --color-kita-green: #0C6B4E;
-  --color-kita-green-deep: #084A36;
-  --color-kita-green-soft: #E3F0E9;
+  --color-kita-green: #D92323;
+  --color-kita-green-deep: #A31212;
+  --color-kita-green-soft: #FDE8E8;
 
-  --color-spark: #F2B32C;
-  --color-spark-deep: #C88A0E;
-  --color-spark-ink: #8A5A00;
-  --color-spark-soft: #FBEBC7;
+  --color-kita-red: #D92323;
+  --color-kita-red-deep: #A31212;
+  --color-kita-red-soft: #FDE8E8;
 
-  --color-line: #E3E2D4;
-  --color-line-strong: #D3D2C0;
+  --color-spark: #F59E0B;
+  --color-spark-deep: #D97706;
+  --color-spark-ink: #92400E;
+  --color-spark-soft: #FEF3C7;
+
+  --color-line: #EFE4E2;
+  --color-line-strong: #DECBC7;
 
   /* Semantic aliases (kept for Tailwind base + any shadcn usage) */
   --color-background: var(--background);
@@ -80,25 +84,25 @@
   --font-bricolage: "Bricolage Grotesque", sans-serif;
   --font-space-mono: "Space Mono", monospace;
 
-  --background: #F4F3EA;
+  --background: #FAF6F5;
   --surface: #FFFFFF;
-  --foreground: #16241D;
+  --foreground: #1F1315;
   --card: #FFFFFF;
-  --card-foreground: #16241D;
+  --card-foreground: #1F1315;
   --popover: #FFFFFF;
-  --popover-foreground: #16241D;
-  --primary: #0C6B4E;
+  --popover-foreground: #1F1315;
+  --primary: #D92323;
   --primary-foreground: #FFFFFF;
-  --secondary: #E3F0E9;
-  --secondary-foreground: #0C6B4E;
-  --muted: #ECEBDD;
-  --muted-foreground: #4F5B53;
-  --accent: #FBEBC7;
-  --accent-foreground: #16241D;
-  --destructive: #D64545;
-  --border: #E3E2D4;
-  --input: #E3E2D4;
-  --ring: #0C6B4E;
+  --secondary: #FDE8E8;
+  --secondary-foreground: #D92323;
+  --muted: #F3EAE8;
+  --muted-foreground: #5E464A;
+  --accent: #FEF3C7;
+  --accent-foreground: #1F1315;
+  --destructive: #DC2626;
+  --border: #EFE4E2;
+  --input: #EFE4E2;
+  --ring: #D92323;
   --radius: 0.75rem;
 }
 

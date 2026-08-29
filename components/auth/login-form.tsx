@@ -47,14 +47,14 @@ export function LoginForm({ next }: { next?: string }) {
         {next && <input type="hidden" name="next" value={next} />}
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="login-email">School email</Label>
+          <Label htmlFor="login-email">Email address</Label>
           <Input
             id="login-email"
             name="email"
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="you@lyfjshs.edu.ph"
+            placeholder="you@example.com"
             aria-invalid={getFieldError("email") ? true : undefined}
             aria-describedby={getFieldError("email") ? "login-email-error" : undefined}
             className="h-11 rounded-lg text-base"

@@ -24,11 +24,10 @@ export function ForgotPasswordForm() {
         </span>
         <div className="flex flex-col gap-1.5">
           <h2 className="font-display text-2xl font-extrabold text-ink">
-            Check your email
+            Reset request sent
           </h2>
           <p className="max-w-xs text-sm text-muted">
-            We sent a password reset link to your email address. Click it to set a
-            new password.
+            If an account exists with that email, instructions to reset your password have been processed.
           </p>
         </div>
         <Link
@@ -50,7 +49,7 @@ export function ForgotPasswordForm() {
           Forgot your password?
         </h1>
         <p className="text-[15px] text-muted">
-          Enter your school email and we&apos;ll send you a link to reset it.
+          Enter your email address and we&apos;ll help you reset your credentials.
         </p>
       </header>
 
@@ -63,14 +62,14 @@ export function ForgotPasswordForm() {
 
       <form action={formAction} className="flex flex-col gap-5">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="reset-email">School email</Label>
+          <Label htmlFor="reset-email">Email address</Label>
           <Input
             id="reset-email"
             name="email"
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="you@lyfjshs.edu.ph"
+            placeholder="you@example.com"
             aria-invalid={getFieldError("email") ? true : undefined}
             aria-describedby={getFieldError("email") ? "reset-email-error" : undefined}
             className="h-11 rounded-lg text-base"

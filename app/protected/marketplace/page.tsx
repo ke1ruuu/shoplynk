@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserProfile } from "@/lib/auth/session";
 import { ProtectedLayout } from "@/components/shell/protected-layout";
 import { MarketplaceView } from "@/components/marketplace/marketplace-view";
 import { ProductItem } from "@/components/marketplace/product-card";
@@ -13,24 +14,15 @@ export const metadata: Metadata = {
 };
 
 export default async function DedicatedMarketplacePage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getCurrentUserProfile();
 
   if (!user) {
     redirect("/login");
   }
 
-  // 1. Fetch user profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*, campuses(name, code)")
-    .eq("id", user.id)
-    .single();
+  const supabase = await createClient();
 
-  // 2. Fetch live categories from Supabase
+  // 1. Fetch live categories from Supabase
   const { data: dbCategories } = await supabase
     .from("categories")
     .select("id, name, slug, icon")
@@ -47,7 +39,7 @@ export default async function DedicatedMarketplacePage() {
     categories = MOCK_CATEGORIES;
   }
 
-  // 3. Fetch live active products from Supabase
+  // 2. Fetch live active products from Supabase
   const { data: dbProducts } = await supabase
     .from("products")
     .select(`

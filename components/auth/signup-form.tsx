@@ -2,7 +2,7 @@
 
 import React, { useActionState, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, BadgeCheck, AlertCircle } from "lucide-react";
+import { BadgeCheck, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,31 +27,6 @@ export function SignupForm({
   );
 
   const getFieldError = (field: string) => state.errors?.[field]?.[0];
-
-  if (state.success) {
-    return (
-      <div className="flex flex-col items-center gap-4 rounded-2xl border border-kita-green/20 bg-kita-green-soft p-8 text-center shadow-flyer">
-        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-kita-green text-white">
-          <CheckCircle2 className="h-6 w-6" />
-        </span>
-        <div className="flex flex-col gap-1.5">
-          <h2 className="font-display text-2xl font-extrabold text-ink">
-            Check your email
-          </h2>
-          <p className="max-w-xs text-sm text-muted">
-            We sent a confirmation link to your inbox. Click it to verify your
-            account and enter the marketplace.
-          </p>
-        </div>
-        <Link
-          href="/login"
-          className="mt-2 inline-flex items-center text-sm font-semibold text-kita-green underline-offset-4 hover:underline"
-        >
-          Return to login
-        </Link>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-7">
@@ -114,14 +89,14 @@ export function SignupForm({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="signup-email">School email</Label>
+          <Label htmlFor="signup-email">Email address</Label>
           <Input
             id="signup-email"
             name="email"
             type="email"
             inputMode="email"
             autoComplete="email"
-            placeholder="you@lyfjshs.edu.ph"
+            placeholder="you@example.com"
             aria-invalid={getFieldError("email") ? true : undefined}
             aria-describedby={
               getFieldError("email") ? "signup-email-error" : "signup-email-hint"
@@ -132,7 +107,7 @@ export function SignupForm({
             <FieldError id="signup-email-error" message={getFieldError("email")} />
           ) : (
             <p id="signup-email-hint" className="text-xs text-muted">
-              Use your LYFJSHS email so we can verify you belong to campus.
+              We&apos;ll use this for your account and order notifications.
             </p>
           )}
         </div>

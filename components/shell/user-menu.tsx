@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { LogOut, User, Store, Shield } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,6 +28,7 @@ interface UserMenuProps {
 }
 
 export function UserMenu({ user, profile }: UserMenuProps) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   const name = profile?.full_name || user.user_metadata?.full_name || "Member";
@@ -76,15 +78,31 @@ export function UserMenu({ user, profile }: UserMenuProps) {
           <span>Profile</span>
         </DropdownMenuItem>
 
+        {role === "BUYER" && (
+          <DropdownMenuItem
+            onClick={() => router.push("/seller/verification")}
+            className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
+          >
+            <Store className="h-4 w-4 text-spark-ink" />
+            <span>Become a Seller</span>
+          </DropdownMenuItem>
+        )}
+
         {role === "SELLER" && (
-          <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium">
+          <DropdownMenuItem
+            onClick={() => router.push("/seller")}
+            className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
+          >
             <Store className="h-4 w-4 text-kita-green" />
-            <span>Seller Dashboard</span>
+            <span>Seller Studio</span>
           </DropdownMenuItem>
         )}
 
         {(role === "CAMPUS_ADMIN" || role === "PLATFORM_ADMIN") && (
-          <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium">
+          <DropdownMenuItem
+            onClick={() => router.push("/admin")}
+            className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
+          >
             <Shield className="h-4 w-4 text-spark-ink" />
             <span>Admin Console</span>
           </DropdownMenuItem>

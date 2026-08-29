@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Tag } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserProfile } from "@/lib/auth/session";
 import { ProtectedLayout } from "@/components/shell/protected-layout";
 import { MarketplaceView } from "@/components/marketplace/marketplace-view";
 import { ProductItem } from "@/components/marketplace/product-card";
@@ -32,22 +33,13 @@ export default async function CategoryPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getCurrentUserProfile();
 
   if (!user) {
     redirect("/login");
   }
 
-  // 1. Fetch user profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*, campuses(name, code)")
-    .eq("id", user.id)
-    .single();
+  const supabase = await createClient();
 
   // 2. Fetch categories
   const { data: dbCategories } = await supabase
