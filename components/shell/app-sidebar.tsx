@@ -23,6 +23,7 @@ import {
   Package,
   Clock,
   Heart,
+  MessageSquare,
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
 import { useSidebar } from "./sidebar-context";
@@ -81,6 +82,7 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
   const isMarketplaceActive = pathname.startsWith("/protected/marketplace");
   const isOrdersActive = pathname.startsWith("/protected/orders");
   const isFavoritesActive = pathname.startsWith("/protected/favorites");
+  const isMessagesActive = pathname.startsWith("/protected/messages");
   const isSellerActive =
     pathname === "/seller" ||
     (pathname.startsWith("/seller/products") &&
@@ -360,6 +362,25 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                   >
                     <Heart className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
                     {!isCollapsedView && <span>Saved Favorites</span>}
+                  </Link>
+
+                  {/* Messages */}
+                  <Link
+                    href="/protected/messages"
+                    onClick={() => setMobileOpen(false)}
+                    className={`group flex items-center rounded-xl transition-all ${
+                      isCollapsedView
+                        ? "h-11 w-11 mx-auto justify-center"
+                        : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                    } ${
+                      isMessagesActive
+                        ? "bg-kita-green text-white shadow-flyer"
+                        : "text-muted hover:bg-paper hover:text-ink"
+                    }`}
+                    title="Messages"
+                  >
+                    <MessageSquare className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                    {!isCollapsedView && <span>Messages</span>}
                   </Link>
                 </div>
 

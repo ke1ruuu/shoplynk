@@ -100,10 +100,13 @@ export function ProductTable({
     const matchesCategory = selectedCategory === "ALL" || p.category_id === selectedCategory;
 
     const matchesStatus =
-      selectedStatus === "ALL" ||
-      (selectedStatus === "OUT_OF_STOCK"
+      selectedStatus === "ALL"
+        ? p.status !== "ARCHIVED"
+        : selectedStatus === "SHOW_ALL"
+        ? true
+        : selectedStatus === "OUT_OF_STOCK"
         ? p.status === "OUT_OF_STOCK" || p.stock === 0
-        : p.status === selectedStatus);
+        : p.status === selectedStatus;
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
@@ -231,7 +234,8 @@ export function ProductTable({
             aria-label="Filter by status"
             className="[&>select]:h-9 [&>select]:rounded-md [&>select]:border-line [&>select]:bg-paper [&>select]:text-ink"
           >
-            <option value="ALL">All statuses</option>
+            <option value="ALL">Active Products (Excl. Archived)</option>
+            <option value="SHOW_ALL">All Listings (Inc. Archived)</option>
             {STATUS_CHOICES.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
@@ -250,7 +254,7 @@ export function ProductTable({
           {/* Wide viewports: the full table. */}
           <div className="hidden md:block">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-line bg-paper/60 text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-muted">
+              <thead className="border-b border-line bg-paper/60 text-xs font-semibold uppercase tracking-[0.07em] text-muted">
                 <tr>
                   <th scope="col" className="px-4 py-2.5 font-semibold">
                     Product
