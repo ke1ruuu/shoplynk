@@ -104,7 +104,7 @@ const CANCELLATION_REASONS = [
 
 export function OrdersView({ displayName, orders: initialOrders, recommendedProducts = [] }: OrdersViewProps) {
   const [orders, setOrders] = useState<BuyerOrder[]>(initialOrders);
-  const [activeTab, setActiveTab] = useState<"all" | "in_progress" | "ready" | "completed" | "cancelled">("all");
+  const [activeTab, setActiveTab] = useState<"active" | "ready" | "completed" | "cancelled" | "all">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string>(initialOrders[0]?.id || "");
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
@@ -117,6 +117,12 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
   const [cancelError, setCancelError] = useState<string | null>(null);
 
   const { addItem } = useCart();
+
+  // Active / In-Progress purchases (excluding completed and cancelled)
+  const activeOrders = useMemo(
+    () => orders.filter((o) => !["COMPLETED", "CANCELLED"].includes(o.status)),
+    [orders]
+  );
 
   const inProgressOrders = useMemo(
     () => orders.filter((o) => ["PENDING", "PREPARING", "PAYMENT_REVIEW", "AWAITING_PAYMENT"].includes(o.status)),
@@ -139,15 +145,17 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
   );
 
   const filteredOrders = useMemo(() => {
-    let list = orders;
-    if (activeTab === "in_progress") {
-      list = inProgressOrders;
+    let list = activeOrders;
+    if (activeTab === "active") {
+      list = activeOrders;
     } else if (activeTab === "ready") {
       list = readyOrders;
     } else if (activeTab === "completed") {
       list = completedOrders;
     } else if (activeTab === "cancelled") {
       list = cancelledOrders;
+    } else if (activeTab === "all") {
+      list = orders;
     }
 
     if (!searchQuery.trim()) return list;
@@ -251,11 +259,11 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
           className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
         >
           {[
-            { id: "all", label: "All Orders", count: orders.length },
-            { id: "in_progress", label: "In Progress", count: inProgressOrders.length },
+            { id: "active", label: "Active Purchases", count: activeOrders.length },
             { id: "ready", label: "Ready for Pickup", count: readyOrders.length },
             { id: "completed", label: "Completed", count: completedOrders.length },
             { id: "cancelled", label: "Cancelled", count: cancelledOrders.length },
+            { id: "all", label: "All History", count: orders.length },
           ].map((tab) => {
             const isCurrent = activeTab === tab.id;
             return (
@@ -552,7 +560,7 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
 
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/protected/messages?store=${activeOrder.storeName ? activeOrder.storeName.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") : ""}&message=${encodeURIComponent(`Hi! I'm inquiring about my order #${activeOrder.order_number}.`)}`}
+                      href={`/protected/messages?store=${encodeURIComponent(activeOrder.storeName || "")}&message=${encodeURIComponent(`Hi! I'm inquiring about my order #${activeOrder.order_number}.`)}`}
                       className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-bold text-ink hover:bg-paper transition-colors"
                       title="Message Seller"
                     >

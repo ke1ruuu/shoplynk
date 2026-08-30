@@ -1,7 +1,11 @@
--- Migration 0003: Realtime Chat Conversations & Messages
+-- Migration 0003: Realtime Chat Conversations & Messages (Clean Drop & Recreate)
 
--- 1. Create conversations table
-CREATE TABLE IF NOT EXISTS conversations (
+-- 1. Drop existing tables if present to ensure a completely clean rebuild
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS conversations CASCADE;
+
+-- 2. Create conversations table
+CREATE TABLE conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   buyer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   seller_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -12,8 +16,8 @@ CREATE TABLE IF NOT EXISTS conversations (
   UNIQUE(buyer_id, store_id)
 );
 
--- 2. Create messages table
-CREATE TABLE IF NOT EXISTS messages (
+-- 3. Create messages table
+CREATE TABLE messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
   sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -22,20 +26,24 @@ CREATE TABLE IF NOT EXISTS messages (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. Create indexes for high performance
-CREATE INDEX IF NOT EXISTS idx_conversations_buyer_id ON conversations(buyer_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_seller_id ON conversations(seller_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_store_id ON conversations(store_id);
-CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at DESC);
-CREATE INDEX IF NOT EXISTS idx_messages_conversation_id_created ON messages(conversation_id, created_at ASC);
-CREATE INDEX IF NOT EXISTS idx_messages_sender_id ON messages(sender_id);
-CREATE INDEX IF NOT EXISTS idx_messages_is_read ON messages(conversation_id, is_read);
+-- 4. Create performance indexes
+CREATE INDEX idx_conversations_buyer_id ON conversations(buyer_id);
+CREATE INDEX idx_conversations_seller_id ON conversations(seller_id);
+CREATE INDEX idx_conversations_store_id ON conversations(store_id);
+CREATE INDEX idx_conversations_last_message ON conversations(last_message_at DESC);
+CREATE INDEX idx_messages_conversation_id_created ON messages(conversation_id, created_at ASC);
+CREATE INDEX idx_messages_sender_id ON messages(sender_id);
+CREATE INDEX idx_messages_is_read ON messages(conversation_id, is_read);
 
--- 4. Enable Row Level Security (RLS)
+-- 5. Grant table-level permissions to API roles (RLS will control row access)
+GRANT ALL ON TABLE public.conversations TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.messages TO anon, authenticated, service_role;
+
+-- 6. Enable Row Level Security (RLS)
 ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
 
--- 5. RLS Policies for conversations
+-- 7. RLS Policies for conversations
 CREATE POLICY "Users can view conversations they participate in"
   ON conversations FOR SELECT
   USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
@@ -48,7 +56,11 @@ CREATE POLICY "Participants can update conversations"
   ON conversations FOR UPDATE
   USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
 
--- 6. RLS Policies for messages
+CREATE POLICY "Participants can delete conversations"
+  ON conversations FOR DELETE
+  USING (auth.uid() = buyer_id OR auth.uid() = seller_id);
+
+-- 8. RLS Policies for messages
 CREATE POLICY "Users can view messages in their conversations"
   ON messages FOR SELECT
   USING (
@@ -80,7 +92,17 @@ CREATE POLICY "Users can mark messages as read in their conversations"
     )
   );
 
--- 7. Add tables to Supabase Realtime Publication
+CREATE POLICY "Users can delete messages in their conversations"
+  ON messages FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM conversations c
+      WHERE c.id = messages.conversation_id
+      AND (c.buyer_id = auth.uid() OR c.seller_id = auth.uid())
+    )
+  );
+
+-- 9. Add tables to Supabase Realtime Publication
 DO $$
 BEGIN
   BEGIN

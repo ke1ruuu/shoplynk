@@ -141,11 +141,8 @@ export async function placeOrderAction(input: PlaceOrderInput): Promise<PlaceOrd
     // 5. Automatically create/link conversation thread with store
     try {
       if (validStoreId) {
-        const itemsSummary = items.map((i) => `${i.quantity}x ${i.title}`).join(", ");
-        const orderMessage = `Ordered #${orderNumber} (${itemsSummary}) for ₱${totalAmount.toFixed(2)}. Pickup: ${input.pickupLocation}.`;
         await getOrCreateConversationAction({
           storeId: validStoreId,
-          initialMessage: orderMessage,
         });
       }
     } catch (msgErr) {

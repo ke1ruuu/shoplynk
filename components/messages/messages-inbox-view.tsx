@@ -19,6 +19,10 @@ import {
   RefreshCw,
   Sparkles,
   ExternalLink,
+  MoreVertical,
+  Trash2,
+  Archive,
+  VolumeX,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -27,12 +31,14 @@ import {
   sendMessageAction,
   markMessagesAsReadAction,
   getConversationMessagesAction,
+  deleteConversationAction,
 } from "@/app/actions/messages";
 
 interface MessagesInboxViewProps {
   currentUserId: string;
   initialConversations: ConversationItem[];
   initialActiveId?: string;
+  prefillMessage?: string;
 }
 
 const QUICK_PROMPTS = [
@@ -56,6 +62,7 @@ export function MessagesInboxView({
   currentUserId,
   initialConversations,
   initialActiveId,
+  prefillMessage,
 }: MessagesInboxViewProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
@@ -66,8 +73,10 @@ export function MessagesInboxView({
   );
   const [filterType, setFilterType] = useState<"all" | "buyer" | "seller" | "unread">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [inputText, setInputText] = useState("");
+  const [inputText, setInputText] = useState(prefillMessage || "");
   const [isSending, setIsSending] = useState(false);
+  const [threadMenuId, setThreadMenuId] = useState<string | null>(null);
+  const threadMenuRef = useRef<HTMLDivElement>(null);
 
   // Active conversation object
   const activeConversation = useMemo(() => {
@@ -94,25 +103,26 @@ export function MessagesInboxView({
     async function loadThread() {
       setLoadingMessages(true);
 
-      // 1. First check server action storage
-      const stored = await getConversationMessagesAction(activeConversation?.id || "");
-      if (isMounted && stored && stored.length > 0) {
-        setMessages(stored);
+      const fetchedMessages = await getConversationMessagesAction(activeConversation?.id || "");
+      if (isMounted) {
+        setMessages(
+          fetchedMessages && fetchedMessages.length > 0
+            ? fetchedMessages
+            : activeConversation?.latest_message
+            ? [
+                {
+                  id: activeConversation.latest_message.id,
+                  conversation_id: activeConversation.id,
+                  sender_id: activeConversation.latest_message.sender_id,
+                  content: activeConversation.latest_message.content,
+                  is_read: activeConversation.latest_message.is_read,
+                  created_at: activeConversation.latest_message.created_at,
+                },
+              ]
+            : []
+        );
         setLoadingMessages(false);
         setTimeout(scrollToBottom, 50);
-      } else {
-        // Fallback: Query Supabase directly
-        const { data } = await supabase
-          .from("messages")
-          .select("id, conversation_id, sender_id, content, is_read, created_at")
-          .eq("conversation_id", activeConversation?.id || "")
-          .order("created_at", { ascending: true });
-
-        if (isMounted) {
-          setMessages((data as ChatMessage[]) || (activeConversation?.latest_message ? [activeConversation.latest_message] : []));
-          setLoadingMessages(false);
-          setTimeout(scrollToBottom, 50);
-        }
       }
 
       // Mark as read in background
@@ -171,6 +181,32 @@ export function MessagesInboxView({
       supabase.removeChannel(channel);
     };
   }, [activeConversation?.id, supabase]);
+
+  // Close thread menu on click outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (threadMenuRef.current && !threadMenuRef.current.contains(e.target as Node)) {
+        setThreadMenuId(null);
+      }
+    }
+    if (threadMenuId) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [threadMenuId]);
+
+  // Handle deleting a conversation thread
+  async function handleDeleteThread(convId: string) {
+    setThreadMenuId(null);
+    const res = await deleteConversationAction(convId);
+    if (res.success) {
+      setConversations((prev) => prev.filter((c) => c.id !== convId));
+      if (activeId === convId) {
+        const remaining = conversations.filter((c) => c.id !== convId);
+        setActiveId(remaining[0]?.id || "");
+      }
+    }
+  }
 
   // Handle message sending
   async function handleSendMessage(e?: React.FormEvent) {
@@ -344,18 +380,24 @@ export function MessagesInboxView({
                 const hasUnread = conv.unread_count > 0;
 
                 return (
-                  <button
+                  <div
                     key={conv.id}
-                    type="button"
-                    onClick={() => setActiveId(conv.id)}
-                    className={`w-full flex items-start gap-3 p-4 text-left transition-all cursor-pointer ${
+                    className={`relative w-full flex items-start gap-3 p-4 text-left transition-all group ${
                       isSelected
                         ? "bg-kita-green-soft/60 ring-1 ring-kita-green/30"
                         : "hover:bg-paper bg-surface"
                     }`}
                   >
+                    {/* Clickable Area */}
+                    <button
+                      type="button"
+                      onClick={() => setActiveId(conv.id)}
+                      className="absolute inset-0 z-0 cursor-pointer"
+                      aria-label={`Open conversation with ${name}`}
+                    />
+
                     {/* Avatar */}
-                    <div className="relative h-10 w-10 rounded-full bg-paper-deep border border-line flex items-center justify-center flex-shrink-0 overflow-hidden">
+                    <div className="relative h-10 w-10 rounded-full bg-paper-deep border border-line flex items-center justify-center flex-shrink-0 overflow-hidden z-[1]">
                       {isBuyer && conv.store.logo_url ? (
                         <Image
                           src={conv.store.logo_url}
@@ -376,16 +418,72 @@ export function MessagesInboxView({
                     </div>
 
                     {/* Info */}
-                    <div className="flex-1 min-w-0 flex flex-col gap-1">
+                    <div className="flex-1 min-w-0 flex flex-col gap-1 z-[1]">
                       <div className="flex items-center justify-between gap-1">
                         <span className="font-display text-xs font-bold text-ink truncate">
                           {name}
                         </span>
-                        <span className="font-mono text-xs text-muted flex-shrink-0">
-                          {conv.latest_message
-                            ? formatTime(conv.latest_message.created_at)
-                            : ""}
-                        </span>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <span className="font-mono text-xs text-muted">
+                            {conv.latest_message
+                              ? formatTime(conv.latest_message.created_at)
+                              : ""}
+                          </span>
+
+                          {/* Three-dots Menu Trigger */}
+                          <div className="relative" ref={threadMenuId === conv.id ? threadMenuRef : undefined}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setThreadMenuId(threadMenuId === conv.id ? null : conv.id);
+                              }}
+                              className="p-0.5 rounded-md text-muted opacity-0 group-hover:opacity-100 hover:text-ink hover:bg-paper transition-all cursor-pointer z-[2] relative"
+                              aria-label="Thread options"
+                            >
+                              <MoreVertical className="h-3.5 w-3.5" />
+                            </button>
+
+                            {threadMenuId === conv.id && (
+                              <div className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-line bg-surface shadow-lg z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setThreadMenuId(null);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted hover:text-ink hover:bg-paper transition-colors cursor-pointer"
+                                >
+                                  <Archive className="h-3.5 w-3.5" />
+                                  <span>Archive</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setThreadMenuId(null);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-muted hover:text-ink hover:bg-paper transition-colors cursor-pointer"
+                                >
+                                  <VolumeX className="h-3.5 w-3.5" />
+                                  <span>Mute</span>
+                                </button>
+                                <div className="border-t border-line my-1" />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteThread(conv.id);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <span>Delete Thread</span>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </div>
 
                       <div className="flex items-center justify-between gap-2">
@@ -396,7 +494,7 @@ export function MessagesInboxView({
                               : "text-muted font-normal"
                           }`}
                         >
-                          {conv.latest_message?.content || "Ready to coordinate pickup"}
+                          {conv.latest_message?.content || "Start a conversation"}
                         </p>
 
                         {hasUnread && (
@@ -406,7 +504,7 @@ export function MessagesInboxView({
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 );
               })
             )}

@@ -34,7 +34,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
   if (params.store && !activeId) {
     const res = await getOrCreateConversationAction({
       storeSlug: params.store,
-      initialMessage: params.message,
+      storeName: params.store,
     });
     if (res.success && res.conversationId) {
       activeId = res.conversationId;
@@ -48,6 +48,7 @@ export default async function MessagesPage({ searchParams }: MessagesPageProps) 
       currentUserId={user.id}
       initialConversations={conversations}
       initialActiveId={activeId}
+      prefillMessage={params.message}
     />
   );
 }
