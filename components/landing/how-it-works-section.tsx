@@ -84,7 +84,7 @@ export function HowItWorksSection() {
   const currentSteps = activeTab === "buyers" ? BUYER_STEPS : SELLER_STEPS;
 
   return (
-    <section id="how-it-works" className="py-16 md:py-24 bg-surface border-y border-line">
+    <section id="how-it-works" className="py-16 md:py-24 bg-surface border-y border-line scroll-mt-24">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col items-center text-center gap-3 mb-8">

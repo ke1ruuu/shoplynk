@@ -25,7 +25,7 @@ export function ForSellersSection() {
   return (
     <section
       id="for-sellers"
-      className="py-16 md:py-24 bg-paper overflow-hidden"
+      className="py-16 md:py-24 bg-paper overflow-hidden scroll-mt-24"
     >
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-14 lg:gap-12 items-center">
@@ -83,7 +83,7 @@ export function ForSellersSection() {
               <span className="pin -top-1.5 right-4" style={{ "--pin-color": "#D92323" } as React.CSSProperties} aria-hidden="true" />
               <div className="flex items-center justify-between">
                 <div>
-                  <span className="eyebrow text-muted text-[0.6rem]">Total kita</span>
+                  <span className="eyebrow text-muted text-xs">Total kita</span>
                   <div className="tabular text-2xl font-bold text-ink mt-1">₱8,250</div>
                 </div>
                 <span className="inline-flex items-center gap-1 tabular text-xs font-bold text-kita-green bg-kita-green-soft px-2 py-1 rounded-full">
@@ -104,11 +104,11 @@ export function ForSellersSection() {
 
               <div className="pt-2 border-t border-dashed border-line grid grid-cols-2 gap-2 text-center">
                 <div>
-                  <span className="text-[11px] text-muted">Orders</span>
+                  <span className="text-xs text-muted">Orders</span>
                   <div className="tabular text-base font-bold text-ink">36</div>
                 </div>
                 <div>
-                  <span className="text-[11px] text-muted">Listings</span>
+                  <span className="text-xs text-muted">Listings</span>
                   <div className="tabular text-base font-bold text-ink">12</div>
                 </div>
               </div>

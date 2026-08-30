@@ -1,7 +1,9 @@
-import React from "react";
+"use client";
+
+import React, { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, MapPin, Users } from "lucide-react";
+import { ArrowRight, ShieldCheck, MapPin, Users, Sparkles } from "lucide-react";
 import { ProductCard, ProductCardProps } from "@/components/common/product-card";
 
 const HERO_PICKS: ProductCardProps[] = [
@@ -44,18 +46,76 @@ const TRUST = [
 ];
 
 export function HeroSection() {
+  const [scrollY, setScrollY] = useState(0);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const heroRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    // Check if the user prefers reduced motion
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReducedMotion(motionQuery.matches);
+
+    const onMotionChange = (e: MediaQueryListEvent) => setReducedMotion(e.matches);
+    motionQuery.addEventListener("change", onMotionChange);
+
+    let animationFrameId: number;
+
+    const handleScroll = () => {
+      if (motionQuery.matches) return;
+      animationFrameId = window.requestAnimationFrame(() => {
+        const currentScroll = window.scrollY;
+        // Only track within top 1000px
+        if (currentScroll < 1200) {
+          setScrollY(currentScroll);
+        }
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      motionQuery.removeEventListener("change", onMotionChange);
+      window.removeEventListener("scroll", handleScroll);
+      window.cancelAnimationFrame(animationFrameId);
+    };
+  }, []);
+
+  // Parallax offsets (disabled if user prefers reduced motion)
+  const bgOrbOffset = reducedMotion ? 0 : scrollY * 0.15;
+  const leftColOffset = reducedMotion ? 0 : scrollY * 0.22;
+  const rightBoardOffset = reducedMotion ? 0 : scrollY * 0.35;
+  const cardFloatOffset = reducedMotion ? 0 : scrollY * 0.12;
+  const opacityFade = reducedMotion ? 1 : Math.max(0.2, 1 - scrollY / 950);
+
   return (
-    <section id="home" className="relative overflow-hidden">
-      {/* Ambient warmth */}
-      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+    <section
+      id="home"
+      ref={heroRef}
+      className="relative overflow-hidden pt-4 pb-16 md:pt-8 md:pb-24 transition-colors"
+    >
+      {/* Ambient Parallax Orbs */}
+      <div
+        className="absolute inset-0 pointer-events-none will-change-transform"
+        style={{
+          transform: `translate3d(0, ${bgOrbOffset}px, 0)`,
+          opacity: opacityFade,
+        }}
+        aria-hidden="true"
+      >
         <div className="absolute -top-40 right-0 w-[620px] h-[520px] bg-spark/15 rounded-full blur-[120px]" />
         <div className="absolute -top-24 left-0 w-[560px] h-[460px] bg-kita-green/10 rounded-full blur-[120px]" />
       </div>
 
-      <div className="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 py-14 md:py-20">
+      <div className="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid lg:grid-cols-12 gap-12 lg:gap-10 items-center">
-          {/* Left — the thesis */}
-          <div className="lg:col-span-6 flex flex-col items-start gap-6">
+          {/* Left Column — Text & CTAs with Parallax Elevation */}
+          <div
+            className="lg:col-span-6 flex flex-col items-start gap-6 will-change-transform"
+            style={{
+              transform: `translate3d(0, ${leftColOffset}px, 0)`,
+              opacity: opacityFade,
+            }}
+          >
             <div className="rise inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-surface border border-line shadow-flyer">
               <span className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-paper border border-line flex items-center justify-center">
                 <Image
@@ -70,7 +130,7 @@ export function HeroSection() {
             </div>
 
             <h1
-              className="rise text-4xl sm:text-6xl lg:text-[4.25rem] font-display font-extrabold text-ink leading-[1.02]"
+              className="rise text-4xl sm:text-6xl lg:text-7xl font-display font-extrabold text-ink leading-[1.02]"
               style={{ animationDelay: "80ms" }}
             >
               Your campus.
@@ -124,26 +184,46 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Right — the bulletin board */}
+          {/* Right Column — The Bulletin Board with Multi-layer 3D Parallax */}
           <div
-            className="rise lg:col-span-6 relative"
-            style={{ animationDelay: "200ms" }}
+            className="rise lg:col-span-6 relative will-change-transform"
+            style={{
+              transform: `translate3d(0, ${rightBoardOffset}px, 0)`,
+              animationDelay: "200ms",
+            }}
           >
             <div className="relative bg-corkboard rounded-3xl border border-line shadow-flyer p-4 sm:p-6">
-              {/* Board label */}
-              <div className="absolute -top-3 left-6 bg-ink text-paper eyebrow px-3 py-1.5 rounded-full text-[0.62rem] shadow-flyer">
+              {/* Board label with micro-parallax float */}
+              <div
+                className="absolute -top-3 left-6 bg-ink text-paper eyebrow px-3 py-1.5 rounded-full text-xs shadow-flyer flex items-center gap-1.5"
+                style={{
+                  transform: `translate3d(0, ${-cardFloatOffset * 0.5}px, 0)`,
+                }}
+              >
+                <Sparkles className="w-3 h-3 text-spark" />
                 Fresh on campus
               </div>
 
               <div className="grid grid-cols-2 gap-4 sm:gap-5 pt-3">
-                <div className="flex flex-col gap-4 sm:gap-5 pt-7">
+                {/* Left Card Stack with upward parallax differential */}
+                <div
+                  className="flex flex-col gap-4 sm:gap-5 pt-7 will-change-transform"
+                  style={{
+                    transform: `translate3d(0, ${cardFloatOffset}px, 0)`,
+                  }}
+                >
                   <ProductCard {...HERO_PICKS[0]} tiltClass="-rotate-2" />
+                  
                   {/* Gold invitation tile */}
                   <Link
                     href="/signup?type=seller"
                     className="group rotate-1 hover:rotate-0 relative bg-spark rounded-2xl border border-spark-deep/30 shadow-flyer hover:shadow-flyer-lg hover:-translate-y-1.5 transition-all p-4 flex flex-col gap-2"
                   >
-                    <span className="pin left-1/2 -translate-x-1/2 -top-1.5" style={{ "--pin-color": "#D92323" } as React.CSSProperties} aria-hidden="true" />
+                    <span
+                      className="pin left-1/2 -translate-x-1/2 -top-1.5"
+                      style={{ "--pin-color": "#D92323" } as React.CSSProperties}
+                      aria-hidden="true"
+                    />
                     <span className="eyebrow text-spark-ink">Your turn</span>
                     <span className="font-display font-extrabold text-ink text-lg leading-tight">
                       Got something to sell?
@@ -154,7 +234,14 @@ export function HeroSection() {
                     </span>
                   </Link>
                 </div>
-                <div className="flex flex-col gap-4 sm:gap-5">
+
+                {/* Right Card Stack with downward parallax differential */}
+                <div
+                  className="flex flex-col gap-4 sm:gap-5 will-change-transform"
+                  style={{
+                    transform: `translate3d(0, ${-cardFloatOffset * 0.8}px, 0)`,
+                  }}
+                >
                   <ProductCard {...HERO_PICKS[1]} tiltClass="rotate-2" />
                   <ProductCard {...HERO_PICKS[2]} tiltClass="-rotate-1" />
                 </div>

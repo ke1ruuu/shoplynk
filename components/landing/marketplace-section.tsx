@@ -68,7 +68,7 @@ export function MarketplaceSection() {
       : SAMPLE_PRODUCTS.filter((p) => p.category === activeCategory);
 
   return (
-    <section id="marketplace" className="py-16 md:py-24 bg-paper">
+    <section id="marketplace" className="py-16 md:py-24 bg-paper scroll-mt-24">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">

@@ -52,7 +52,7 @@ export function TestimonialsSection() {
   const [activeIndex, setActiveIndex] = useState(1);
 
   return (
-    <section id="testimonials" className="py-16 md:py-24 bg-corkboard">
+    <section id="testimonials" className="py-16 md:py-24 bg-corkboard scroll-mt-24">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col items-center text-center gap-3 mb-14">
           <span className="eyebrow text-kita-green">Loved on campus</span>
@@ -94,7 +94,7 @@ export function TestimonialsSection() {
                   </span>
                   <span className="flex flex-col">
                     <span className="text-sm font-bold text-ink">{t.author}</span>
-                    <span className={`eyebrow text-[0.6rem] mt-0.5 ${t.isFaculty ? "text-spark-ink" : "text-kita-green"}`}>
+                    <span className={`eyebrow text-xs mt-0.5 ${t.isFaculty ? "text-spark-ink" : "text-kita-green"}`}>
                       {t.role}
                     </span>
                   </span>
