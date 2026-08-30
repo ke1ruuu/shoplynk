@@ -1,9 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentUser } from "@/lib/auth/session";
+import { getCurrentUser, setSessionCookie } from "@/lib/auth/session";
 
 // ------------------------------------------------------------
 // ZOD SCHEMAS
@@ -27,6 +28,7 @@ const StoreSettingsSchema = z.object({
   gcashNumber: z.string().trim().optional().default(""),
   pickupLocations: z.string().trim().optional().default(""),
   operatingHours: z.string().trim().optional().default(""),
+  isActive: z.enum(["true", "false"]).transform((val) => val === "true"),
 });
 
 export type ActionState = {
@@ -60,7 +62,21 @@ export async function ensureSellerStoreAction() {
 
   const supabase = await createClient();
 
-  // 1. Check for existing store
+  // 1. Verify user profile has SELLER role
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profile?.role !== "SELLER") {
+    return {
+      store: null,
+      error: "You are not verified as a campus seller. Please submit your student ID verification to unlock the Seller Studio.",
+    };
+  }
+
+  // 2. Check for existing store
   const { data: existingStore } = await supabase
     .from("stores")
     .select("*")
@@ -71,7 +87,7 @@ export async function ensureSellerStoreAction() {
     return { store: existingStore, error: null };
   }
 
-  // 2. Provision new store
+  // 3. Provision new store for verified seller
   const baseName = user.full_name ? `${user.full_name}'s Store` : "Student Corner Store";
   const slug = `${slugify(baseName)}-${Math.random().toString(36).substring(2, 6)}`;
 
@@ -93,13 +109,6 @@ export async function ensureSellerStoreAction() {
     return { store: null, error: createError.message };
   }
 
-  // 3. Promote profile role to SELLER if not already
-  await supabase
-    .from("profiles")
-    .update({ role: "SELLER" })
-    .eq("id", user.id);
-
-  revalidatePath("/seller");
   return { store: newStore, error: null };
 }
 
@@ -122,6 +131,7 @@ export async function updateStoreAction(
     gcashNumber: formData.get("gcashNumber"),
     pickupLocations: formData.get("pickupLocations"),
     operatingHours: formData.get("operatingHours"),
+    isActive: formData.get("isActive") || "true",
   };
 
   const parsed = StoreSettingsSchema.safeParse(rawData);
@@ -130,7 +140,7 @@ export async function updateStoreAction(
   }
 
   const supabase = await createClient();
-  const { name, description, gcashName, gcashNumber, pickupLocations, operatingHours } = parsed.data;
+  const { name, description, gcashName, gcashNumber, pickupLocations, operatingHours, isActive } = parsed.data;
 
   const { error } = await supabase
     .from("stores")
@@ -141,6 +151,7 @@ export async function updateStoreAction(
       gcash_number: gcashNumber,
       pickup_locations: pickupLocations,
       operating_hours: operatingHours,
+      is_active: isActive,
       updated_at: new Date().toISOString(),
     })
     .eq("user_id", user.id);
@@ -152,6 +163,92 @@ export async function updateStoreAction(
   revalidatePath("/seller");
   revalidatePath("/protected/marketplace");
   return { success: true, message: "Store details saved successfully!" };
+}
+
+/**
+ * Fast toggle for activating/deactivating a storefront.
+ */
+export async function toggleStoreActiveAction(isActive: boolean): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { message: "Unauthorized. Please log in." };
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("stores")
+    .update({ is_active: isActive, updated_at: new Date().toISOString() })
+    .eq("user_id", user.id);
+
+  if (error) {
+    return { message: error.message };
+  }
+
+  revalidatePath("/seller");
+  revalidatePath("/protected/marketplace");
+  return {
+    success: true,
+    message: isActive ? "Storefront activated and live!" : "Storefront deactivated/paused.",
+  };
+}
+
+/**
+ * Permanently delete the seller's storefront and all associated products.
+ * Downgrades the profile back to 'BUYER'.
+ */
+export async function deleteStorefrontAction(): Promise<ActionState> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { message: "Unauthorized. Please log in." };
+  }
+
+  const supabase = await createClient();
+
+  // 1. Get the seller's store
+  const { data: store } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (store) {
+    // 2. Delete product images & products for this store
+    const { data: products } = await supabase
+      .from("products")
+      .select("id")
+      .eq("store_id", store.id);
+
+    if (products && products.length > 0) {
+      const productIds = products.map((p) => p.id);
+      await supabase.from("product_images").delete().in("product_id", productIds);
+      await supabase.from("products").delete().eq("store_id", store.id);
+    }
+
+    // 3. Delete store record
+    await supabase.from("stores").delete().eq("id", store.id);
+  }
+
+  // 4. Downgrade profile to BUYER
+  await supabase
+    .from("profiles")
+    .update({
+      role: "BUYER",
+      is_verified_seller: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", user.id);
+
+  // 5. Update session cookie
+  await setSessionCookie({
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    role: "BUYER",
+  });
+
+  revalidatePath("/", "layout");
+  redirect("/protected");
 }
 
 // ------------------------------------------------------------

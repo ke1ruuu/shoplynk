@@ -8,7 +8,6 @@ import { ProtectedLayout } from "@/components/shell/protected-layout";
 import { MarketplaceView } from "@/components/marketplace/marketplace-view";
 import { ProductItem } from "@/components/marketplace/product-card";
 import { Category } from "@/components/marketplace/marketplace-filters";
-import { MOCK_CATEGORIES, MOCK_PRODUCTS } from "@/lib/mock-data";
 
 export const metadata: Metadata = {
   title: "Search Results — Project Kita",
@@ -48,10 +47,6 @@ export default async function SearchResultsPage({
     slug: c.slug,
     icon: c.icon,
   }));
-
-  if (categories.length === 0) {
-    categories = MOCK_CATEGORIES;
-  }
 
   // 3. Build products query
   let query = supabase
@@ -131,25 +126,11 @@ export default async function SearchResultsPage({
     };
   });
 
-  if (products.length === 0) {
-    if (q.trim()) {
-      const qLower = q.toLowerCase();
-      products = MOCK_PRODUCTS.filter(
-        (p) =>
-          p.title.toLowerCase().includes(qLower) ||
-          (p.description && p.description.toLowerCase().includes(qLower)) ||
-          p.store.name.toLowerCase().includes(qLower)
-      );
-    } else {
-      products = MOCK_PRODUCTS;
-    }
-  }
-
   const userRole = profile?.role || "BUYER";
 
   return (
     <ProtectedLayout user={user} profile={profile}>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10 transition-all duration-300">
         <div className="flex flex-col gap-6 mb-8">
           <Link
             href="/protected/marketplace"

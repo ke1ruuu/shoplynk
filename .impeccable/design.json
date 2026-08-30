@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-29T16:15:20.000Z",
+  "title": "Design System: Project Kita (Flatline System)",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Collegiate Crimson Red",
+        "canonical": "#D92323",
+        "tonalRamp": [
+          "#5A0505",
+          "#7E0C0C",
+          "#A31212",
+          "#C21B1B",
+          "#D92323",
+          "#E85A5A",
+          "#F59C9C",
+          "#FDE8E8"
+        ]
+      },
+      "spark": {
+        "role": "secondary",
+        "displayName": "Marigold Spark",
+        "canonical": "#F59E0B",
+        "tonalRamp": [
+          "#451A03",
+          "#78350F",
+          "#92400E",
+          "#B45309",
+          "#D97706",
+          "#F59E0B",
+          "#FCD34D",
+          "#FEF3C7"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Espresso Ink",
+        "canonical": "#1F1315",
+        "tonalRamp": [
+          "#1F1315",
+          "#3B2629",
+          "#5E464A",
+          "#8A6C71",
+          "#B89DA2",
+          "#DECBC7",
+          "#EFE4E2",
+          "#FAF6F5"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Warm Cream Paper",
+        "canonical": "#FAF6F5",
+        "tonalRamp": [
+          "#3B2629",
+          "#8A6C71",
+          "#DECBC7",
+          "#EFE4E2",
+          "#F3EAE8",
+          "#FAF6F5",
+          "#FCF9F8",
+          "#FFFFFF"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Bricolage Grotesque",
+        "purpose": "High-character expressive headlines, hero banners, and brand accents."
+      },
+      "body": {
+        "displayName": "Plus Jakarta Sans",
+        "purpose": "Clean, highly readable geometric sans-serif for UI text, labels, and descriptions."
+      },
+      "label": {
+        "displayName": "Space Mono",
+        "purpose": "Monospace receipts, prices, student LRNs, and uppercase eyebrow tags."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "fade-in",
+        "value": "0.15s ease-out",
+        "purpose": "Fast, crisp state changes on hover and filter switching."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Flatline Product Cell",
+      "kind": "custom",
+      "refersTo": "flatline-cell",
+      "description": "Nike/Amazon inspired line-ruled product cell with borderless image and clean bottom metadata.",
+      "html": "<div class=\"ds-flat-cell\"><div class=\"ds-flat-img\"></div><div class=\"ds-flat-meta\"><span class=\"ds-flat-cat\">CAMPUS SNACK</span><h4 class=\"ds-flat-title\">Matcha Cookies (Box of 4)</h4><div class=\"ds-flat-price\">₱85.00</div></div></div>",
+      "css": ".ds-flat-cell { background: #FFFFFF; border-bottom: 1px solid #EFE4E2; padding: 16px; font-family: 'Plus Jakarta Sans', sans-serif; } .ds-flat-img { width: 100%; aspect-ratio: 4/3; background: #F3EAE8; border-radius: 8px; margin-bottom: 12px; } .ds-flat-cat { font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700; color: #5E464A; text-transform: uppercase; } .ds-flat-title { font-family: 'Bricolage Grotesque', sans-serif; font-size: 15px; font-weight: 700; color: #1F1315; margin: 4px 0; } .ds-flat-price { font-family: 'Space Mono', monospace; font-size: 16px; font-weight: 700; color: #D92323; }"
+    },
+    {
+      "name": "Primary Action Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Standard high-contrast primary call-to-action button in Collegiate Crimson Red.",
+      "html": "<button class=\"ds-btn-primary\">Publish Product</button>",
+      "css": ".ds-btn-primary { background: #D92323; color: #FFFFFF; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px; padding: 10px 20px; border-radius: 12px; border: none; cursor: pointer; transition: background 0.15s ease; } .ds-btn-primary:hover { background: #A31212; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Modern Flatline Campus Commerce Ledger",
+    "overview": "Project Kita combines the high-efficiency, line-ruled precision of Amazon and Nike digital storefronts with the warm, collegiate brand identity of Luis Y. Ferrer Jr. Senior High School (LYFJSHS). It rejects bloated, bubble-card container sprawl and floating drop-shadow layers in favor of a crisp, flatline structural grid bounded by hairline 1px dividers, high-contrast typography, and an asymmetrical 2-column architecture.",
+    "keyCharacteristics": [
+      "Flatline Line-Ruled Structure: Crisp 1px hairline dividers (#EFE4E2) delineate content zones without redundant nested cards.",
+      "Asymmetrical 2-Column Topology: Sticky left rails for contextual navigation, quick filters, and status summaries alongside wide, uninterrupted right data streams.",
+      "Left-Anchored Alignment: Content anchors directly to the workspace without artificial mx-auto gutters.",
+      "Collegiate Crimson Red & Warm Paper: Retains #D92323 primary accent, #FAF6F5 warm paper base, #1F1315 espresso ink, and #F59E0B amber spark."
+    ],
+    "rules": [
+      {
+        "name": "The Flatline Hairline Rule",
+        "body": "Separation of sections, listings, and data cells is achieved via 1px #EFE4E2 ruled lines, never through floating card dropshadows.",
+        "section": "colors"
+      },
+      {
+        "name": "The Zero-Centering Rule",
+        "body": "Layouts anchor from the left edge; mx-auto centering blobs are strictly avoided on dashboard workspaces.",
+        "section": "layout"
+      }
+    ],
+    "dos": [
+      "Do use ruled 1px hairline lines (border-line / #EFE4E2) to structure sections and grids.",
+      "Do anchor layouts as asymmetrical 2-column streams (Left rail + Right stream).",
+      "Do maintain the Collegiate Crimson Red (#D92323) and Espresso Ink (#1F1315) palette.",
+      "Do keep product prices and numbers in Space Mono with tabular numerals."
+    ],
+    "donts": [
+      "Don't nest cards inside cards inside cards.",
+      "Don't use floating heavy box shadows on resting elements.",
+      "Don't use mx-auto to center dashboards into narrow floating islands.",
+      "Don't change the branding or color tokens."
+    ]
+  }
+}

@@ -1,8 +1,13 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
+import { usePathname } from "next/navigation";
 import { AppSidebar } from "./app-sidebar";
-import { MockDataProvider } from "@/lib/mock-data-context";
+import { SidebarProvider, useSidebar } from "./sidebar-context";
+import { CartProvider } from "@/lib/cart-context";
+import { FavoritesProvider } from "@/lib/favorites-context";
+import { CartDrawer } from "@/components/cart/cart-drawer";
+import { FloatingCartButton } from "@/components/cart/floating-cart-button";
 
 interface ProtectedLayoutProps {
   user: {
@@ -19,34 +24,51 @@ interface ProtectedLayoutProps {
   children: React.ReactNode;
 }
 
-export function ProtectedLayout({ user, profile, children }: ProtectedLayoutProps) {
-  const [collapsed, setCollapsed] = useState<boolean>(false);
+/** Reads collapse state from context so the content offset tracks the rail. */
+function Workspace({
+  isFullPage,
+  children,
+}: {
+  isFullPage: boolean;
+  children: React.ReactNode;
+}) {
+  const { collapsed } = useSidebar();
 
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("projectkita_sidebar_collapsed") === "true") {
-        setCollapsed(true);
-      }
-    } catch {
-      // Ignore
-    }
-  }, []);
+  if (isFullPage) {
+    return <div className="flex-1 w-full">{children}</div>;
+  }
 
   return (
-    <MockDataProvider>
-      <div className="min-h-screen bg-paper text-ink flex flex-col">
-        {/* Sidebar */}
-        <AppSidebar user={user} profile={profile} />
+    <div
+      className={`flex-1 w-full min-w-0 transition-all duration-300 ease-out ${
+        collapsed ? "lg:pl-20" : "lg:pl-64"
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
 
-        {/* Main Content Workspace with Sidebar Offset */}
-        <div
-          className={`flex-1 transition-all duration-300 ${
-            collapsed ? "lg:pl-20" : "lg:pl-64"
-          }`}
-        >
-          {children}
-        </div>
-      </div>
-    </MockDataProvider>
+export function ProtectedLayout({ user, profile, children }: ProtectedLayoutProps) {
+  const pathname = usePathname();
+
+  // Full-page focused creation/editing views where the sidebar should be hidden
+  const isFullPage =
+    pathname.startsWith("/seller/products/") ||
+    pathname === "/seller/verification";
+
+  return (
+    <FavoritesProvider>
+      <CartProvider>
+        <SidebarProvider>
+          <div className="flex min-h-screen flex-col bg-paper text-ink">
+            {!isFullPage && <AppSidebar user={user} profile={profile} />}
+            <Workspace isFullPage={isFullPage}>{children}</Workspace>
+            <CartDrawer />
+            <FloatingCartButton />
+          </div>
+        </SidebarProvider>
+      </CartProvider>
+    </FavoritesProvider>
   );
 }

@@ -10,8 +10,6 @@ import {
 } from "./marketplace-filters";
 import { ProductCard, ProductItem } from "./product-card";
 import { ProductDetailModal } from "./product-detail-modal";
-import { useMockData } from "@/lib/mock-data-context";
-import { MOCK_PRODUCTS, MOCK_CATEGORIES } from "@/lib/mock-data";
 
 interface MarketplaceViewProps {
   initialCategories: Category[];
@@ -26,8 +24,7 @@ export function MarketplaceView({
   userRole,
   showCta = false,
 }: MarketplaceViewProps) {
-  const { useMockData: isMockActive } = useMockData();
-  const categoriesList = initialCategories && initialCategories.length > 0 ? initialCategories : MOCK_CATEGORIES;
+  const categoriesList = initialCategories || [];
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "price-asc" | "price-desc">("newest");
@@ -36,16 +33,7 @@ export function MarketplaceView({
   const [activeModalProduct, setActiveModalProduct] = useState<ProductItem | null>(null);
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
-  // Combine live DB products with mock products when Demo Mode is toggled ON
-  const activeProductList = useMemo(() => {
-    if (isMockActive || initialProducts.length === 0) {
-      // Merge live + mock, preventing duplicate IDs
-      const liveIds = new Set(initialProducts.map((p) => p.id));
-      const filteredMock = MOCK_PRODUCTS.filter((m) => !liveIds.has(m.id));
-      return [...initialProducts, ...filteredMock];
-    }
-    return initialProducts;
-  }, [initialProducts, isMockActive]);
+  const activeProductList = initialProducts || [];
 
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
@@ -114,21 +102,6 @@ export function MarketplaceView({
         hasActiveFilters={hasActiveFilters}
       />
 
-      {/* Demo Mode Indicator Bar */}
-      {isMockActive && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-spark bg-spark-soft p-4 text-xs font-semibold text-spark-ink shadow-flyer">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-spark-ink flex-shrink-0" />
-            <span>
-              <strong>Demo Mode Enabled</strong> — Sample listings are combined with live database items for testing.
-            </span>
-          </div>
-          <span className="eyebrow text-[0.6rem] bg-spark px-2 py-0.5 rounded-full text-ink font-extrabold">
-            TESTING MODE
-          </span>
-        </div>
-      )}
-
       {/* 2. Layout Grid: Left Sidebar Filter Panel + Right Content Area */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* Left Desktop Sidebar Filter Panel (3 Cols) */}
@@ -194,21 +167,16 @@ export function MarketplaceView({
             </span>
           </div>
 
-          {/* Product Grid */}
+          {/* Flatline Product Grid */}
           {filteredProducts.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-              {filteredProducts.map((product, idx) => {
-                const tiltClasses = ["", "-rotate-1 sm:rotate-0", "rotate-1 sm:rotate-0", ""];
-                const tilt = tiltClasses[idx % tiltClasses.length];
-                return (
-                  <ProductCard
-                    key={product.id}
-                    product={product}
-                    onSelect={(p) => setActiveModalProduct(p)}
-                    tiltClass={tilt}
-                  />
-                );
-              })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 sm:gap-6">
+              {filteredProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onSelect={(p) => setActiveModalProduct(p)}
+                />
+              ))}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center gap-4 py-16 px-4 text-center rounded-2xl border border-line bg-corkboard shadow-flyer">

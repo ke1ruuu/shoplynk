@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, User, Store, Shield } from "lucide-react";
+import { LogOut, User, Store, Shield, UserX, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { logoutAction } from "@/app/actions/auth";
+import { DeleteAccountDialog } from "@/components/auth/delete-account-dialog";
 
 interface UserMenuProps {
   user: {
@@ -30,6 +31,7 @@ interface UserMenuProps {
 export function UserMenu({ user, profile }: UserMenuProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
 
   const name = profile?.full_name || user.user_metadata?.full_name || "Member";
   const email = user.email || "";
@@ -49,76 +51,87 @@ export function UserMenu({ user, profile }: UserMenuProps) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger className="group flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-paper-deep focus-visible:outline-kita-green">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-kita-green text-xs font-extrabold text-white shadow-flyer">
-          {initials}
-        </span>
-        <span className="hidden text-left sm:flex sm:flex-col">
-          <span className="text-sm font-semibold text-ink leading-tight">
-            {name}
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger className="group flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-paper-deep focus-visible:outline-kita-green">
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-kita-green text-xs font-extrabold text-white shadow-flyer">
+            {initials}
           </span>
-          <span className="eyebrow text-[0.62rem] text-kita-green">
-            {role.replace("_", " ")}
+          <span className="hidden text-left sm:flex sm:flex-col">
+            <span className="text-sm font-semibold text-ink leading-tight">
+              {name}
+            </span>
+            <span className="eyebrow text-[0.62rem] text-kita-green">
+              {role.replace("_", " ")}
+            </span>
           </span>
-        </span>
-      </DropdownMenuTrigger>
+        </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5 shadow-flyer-lg">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col gap-0.5">
-            <p className="text-sm font-semibold text-ink">{name}</p>
-            <p className="text-xs text-muted truncate">{email}</p>
-          </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
+        <DropdownMenuContent align="end" className="w-60 rounded-xl p-1.5 shadow-flyer-lg">
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col gap-0.5">
+              <p className="text-sm font-semibold text-ink">{name}</p>
+              <p className="text-xs text-muted truncate">{email}</p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
 
-        <DropdownMenuItem className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium">
-          <User className="h-4 w-4 text-muted" />
-          <span>Profile</span>
-        </DropdownMenuItem>
+          {role === "BUYER" && (
+            <DropdownMenuItem
+              onClick={() => router.push("/seller/verification")}
+              className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
+            >
+              <Store className="h-4 w-4 text-spark-ink" />
+              <span>Become a Seller</span>
+            </DropdownMenuItem>
+          )}
 
-        {role === "BUYER" && (
+          {role === "SELLER" && (
+            <DropdownMenuItem
+              onClick={() => router.push("/seller")}
+              className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
+            >
+              <Store className="h-4 w-4 text-kita-green" />
+              <span>Seller Studio</span>
+            </DropdownMenuItem>
+          )}
+
+          {(role === "CAMPUS_ADMIN" || role === "PLATFORM_ADMIN") && (
+            <DropdownMenuItem
+              onClick={() => router.push("/admin")}
+              className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
+            >
+              <Shield className="h-4 w-4 text-spark-ink" />
+              <span>Admin Console</span>
+            </DropdownMenuItem>
+          )}
+
+          <DropdownMenuSeparator />
+
           <DropdownMenuItem
-            onClick={() => router.push("/seller/verification")}
-            className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
+            onClick={() => setDeleteAccountOpen(true)}
+            className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium text-destructive focus:bg-destructive/10 focus:text-destructive"
           >
-            <Store className="h-4 w-4 text-spark-ink" />
-            <span>Become a Seller</span>
+            <UserX className="h-4 w-4" />
+            <span>Delete Account</span>
           </DropdownMenuItem>
-        )}
 
-        {role === "SELLER" && (
           <DropdownMenuItem
-            onClick={() => router.push("/seller")}
-            className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
+            disabled={isPending}
+            onClick={handleLogout}
+            className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium text-muted hover:text-ink focus:bg-paper-deep"
           >
-            <Store className="h-4 w-4 text-kita-green" />
-            <span>Seller Studio</span>
+            <LogOut className="h-4 w-4" />
+            <span>{isPending ? "Logging out…" : "Log out"}</span>
           </DropdownMenuItem>
-        )}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
-        {(role === "CAMPUS_ADMIN" || role === "PLATFORM_ADMIN") && (
-          <DropdownMenuItem
-            onClick={() => router.push("/admin")}
-            className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium"
-          >
-            <Shield className="h-4 w-4 text-spark-ink" />
-            <span>Admin Console</span>
-          </DropdownMenuItem>
-        )}
-
-        <DropdownMenuSeparator />
-
-        <DropdownMenuItem
-          disabled={isPending}
-          onClick={handleLogout}
-          className="cursor-pointer gap-2.5 rounded-lg text-sm font-medium text-destructive focus:bg-destructive/10 focus:text-destructive"
-        >
-          <LogOut className="h-4 w-4" />
-          <span>{isPending ? "Logging out…" : "Log out"}</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      <DeleteAccountDialog
+        userEmail={email}
+        open={deleteAccountOpen}
+        onOpenChange={setDeleteAccountOpen}
+      />
+    </>
   );
 }

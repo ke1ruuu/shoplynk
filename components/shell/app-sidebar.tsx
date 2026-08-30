@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
   LayoutGrid,
@@ -15,10 +15,26 @@ import {
   Menu,
   X,
   MapPin,
+  ChevronsUpDown,
+  User,
+  Settings,
+  ShieldCheck,
+  Package,
+  Clock,
+  Heart,
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
-import { MockDataToggle } from "@/components/common/mock-data-toggle";
+import { useSidebar } from "./sidebar-context";
 import { logoutAction } from "@/app/actions/auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { AccountSettingsDialog } from "./account-settings-dialog";
 
 interface AppSidebarProps {
   user: {
@@ -36,29 +52,10 @@ interface AppSidebarProps {
 
 export function AppSidebar({ user, profile }: AppSidebarProps) {
   const pathname = usePathname();
-  const [collapsed, setCollapsed] = useState<boolean>(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const router = useRouter();
+  const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar();
   const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("projectkita_sidebar_collapsed") === "true") {
-        setCollapsed(true);
-      }
-    } catch {
-      // Ignore
-    }
-  }, []);
-
-  function toggleCollapse() {
-    const next = !collapsed;
-    setCollapsed(next);
-    try {
-      localStorage.setItem("projectkita_sidebar_collapsed", next ? "true" : "false");
-    } catch {
-      // Ignore
-    }
-  }
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   function handleLogout() {
     startTransition(async () => {
@@ -67,6 +64,7 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
   }
 
   const name = profile?.full_name || user.user_metadata?.full_name || "Member";
+  const email = user.email || "";
   const role = profile?.role || "BUYER";
   const isAdmin = role === "CAMPUS_ADMIN" || role === "PLATFORM_ADMIN";
 
@@ -79,10 +77,15 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
 
   const isHomeActive = pathname === "/protected";
   const isMarketplaceActive = pathname.startsWith("/protected/marketplace");
-  const isSellerActive = pathname.startsWith("/seller");
+  const isOrdersActive = pathname.startsWith("/protected/orders");
+  const isFavoritesActive = pathname.startsWith("/protected/favorites");
+  const isSellerActive = pathname === "/seller" || pathname.startsWith("/seller/products");
+  const isSellerOrdersActive = pathname.startsWith("/seller/orders");
   const isVerificationsActive = pathname === "/admin" || pathname === "/admin/verifications";
   const isStoresActive = pathname.startsWith("/admin/stores");
   const isAnalyticsActive = pathname.startsWith("/admin/analytics");
+
+  const isCollapsedView = collapsed && !mobileOpen;
 
   return (
     <>
@@ -121,210 +124,401 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-line bg-surface transition-all duration-300 ${
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-line bg-surface transition-all duration-300 ease-out ${
           mobileOpen ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0"
-        } ${collapsed ? "lg:w-20" : "lg:w-64"}`}
+        } ${isCollapsedView ? "lg:w-20" : "lg:w-64"}`}
       >
-        {/* Top Header & Collapse Toggle */}
-        <div className="flex flex-col gap-3 p-4 border-b border-line">
-          <div className="flex items-center justify-between">
-            {(!collapsed || mobileOpen) ? (
-              <Logo size="sm" showTagline={false} href={isAdmin ? "/admin" : "/"} />
-            ) : (
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-kita-green text-white font-display font-extrabold shadow-flyer mx-auto">
-                K
-              </div>
-            )}
-
-            {/* Desktop Collapse Toggle */}
+        {/* Top Header */}
+        <div className={`flex flex-col border-b border-line ${isCollapsedView ? "p-3 items-center" : "p-4 gap-3"}`}>
+          {isCollapsedView ? (
+            /* Collapsed Header: Interactive Hoverable 'K' Icon that expands on click */
             <button
               type="button"
-              onClick={toggleCollapse}
-              className={`hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-paper text-muted hover:text-ink focus-visible:outline-kita-green ${
-                collapsed ? "mx-auto" : ""
-              }`}
-              title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              onClick={toggleCollapsed}
+              className="group relative flex h-12 w-12 items-center justify-center rounded-2xl bg-kita-green text-white font-display font-extrabold text-xl shadow-flyer hover:bg-kita-green-deep transition-all active:scale-95"
+              title="Click to expand sidebar"
+              aria-label="Expand sidebar"
             >
-              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+              <span className="group-hover:hidden">K</span>
+              <ChevronRight className="hidden group-hover:block h-6 w-6 transition-transform" />
             </button>
+          ) : (
+            /* Expanded Header: Logo and Collapse Button */
+            <>
+              <div className="flex items-center justify-between">
+                <Logo size="sm" showTagline={false} href={isAdmin ? "/admin" : "/"} />
 
-            {/* Mobile Close Toggle */}
-            {mobileOpen && (
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-paper text-muted hover:text-ink"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+                {/* Desktop Collapse Toggle */}
+                <button
+                  type="button"
+                  onClick={toggleCollapsed}
+                  className="hidden lg:flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep focus-visible:outline-kita-green transition-colors"
+                  title="Collapse sidebar"
+                  aria-label="Collapse sidebar"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
 
-          {/* Pilot Campus / Admin Badge */}
-          {(!collapsed || mobileOpen) && (
-            <div className="flex items-center gap-1.5 rounded-xl border border-kita-green/20 bg-kita-green-soft px-3 py-1.5 text-xs font-semibold text-kita-green">
-              {isAdmin ? (
-                <Shield className="h-3.5 w-3.5 flex-shrink-0" />
-              ) : (
-                <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-              )}
-              <span className="truncate">{isAdmin ? "Campus Administrator" : "LYFJSHS Campus"}</span>
-            </div>
+                {/* Mobile Close Toggle */}
+                {mobileOpen && (
+                  <button
+                    type="button"
+                    onClick={() => setMobileOpen(false)}
+                    className="lg:hidden flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-paper text-muted hover:text-ink"
+                    aria-label="Close sidebar"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Pilot Campus / Admin Badge */}
+              <div className="flex items-center gap-1.5 rounded-xl border border-kita-green/20 bg-kita-green-soft px-3 py-1.5 text-xs font-semibold text-kita-green">
+                {isAdmin ? (
+                  <Shield className="h-3.5 w-3.5 flex-shrink-0" />
+                ) : (
+                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
+                )}
+                <span className="truncate">{isAdmin ? "Campus Administrator" : "LYFJSHS Campus"}</span>
+              </div>
+            </>
           )}
         </div>
 
         {/* Navigation Items */}
-        <div className="flex-1 overflow-y-auto p-3 flex flex-col justify-between">
+        <div className={`flex-1 overflow-y-auto ${isCollapsedView ? "p-2" : "p-3"} flex flex-col justify-between`}>
           <nav className="flex flex-col gap-1.5">
             {isAdmin ? (
-              /* Admin Only Navigation (Zero Buyer / Seller Stuff) */
+              /* Admin Navigation */
               <>
                 <Link
                   href="/admin"
                   onClick={() => setMobileOpen(false)}
-                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                  className={`group flex items-center rounded-xl transition-all ${
+                    isCollapsedView
+                      ? "h-11 w-11 mx-auto justify-center"
+                      : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                  } ${
                     isVerificationsActive
                       ? "bg-kita-green text-white shadow-flyer"
                       : "text-muted hover:bg-paper hover:text-ink"
-                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  }`}
                   title="Seller Verifications"
                 >
-                  <Shield className="h-5 w-5 flex-shrink-0 text-spark-ink transition-transform group-hover:scale-105" />
-                  {(!collapsed || mobileOpen) && <span>Seller Verifications</span>}
+                  <Shield className={`h-5 w-5 flex-shrink-0 ${isVerificationsActive ? "text-white" : "text-spark-ink"} transition-transform group-hover:scale-105`} />
+                  {!isCollapsedView && <span>Seller Verifications</span>}
                 </Link>
 
                 <Link
                   href="/admin/stores"
                   onClick={() => setMobileOpen(false)}
-                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                  className={`group flex items-center rounded-xl transition-all ${
+                    isCollapsedView
+                      ? "h-11 w-11 mx-auto justify-center"
+                      : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                  } ${
                     isStoresActive
                       ? "bg-kita-green text-white shadow-flyer"
                       : "text-muted hover:bg-paper hover:text-ink"
-                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  }`}
                   title="Campus Stores"
                 >
                   <Store className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
-                  {(!collapsed || mobileOpen) && <span>Campus Stores</span>}
+                  {!isCollapsedView && <span>Campus Stores</span>}
                 </Link>
 
                 <Link
                   href="/admin/analytics"
                   onClick={() => setMobileOpen(false)}
-                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
+                  className={`group flex items-center rounded-xl transition-all ${
+                    isCollapsedView
+                      ? "h-11 w-11 mx-auto justify-center"
+                      : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                  } ${
                     isAnalyticsActive
                       ? "bg-kita-green text-white shadow-flyer"
                       : "text-muted hover:bg-paper hover:text-ink"
-                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
+                  }`}
                   title="Campus Analytics"
                 >
                   <BarChart3 className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
-                  {(!collapsed || mobileOpen) && <span>Campus Analytics</span>}
+                  {!isCollapsedView && <span>Campus Analytics</span>}
                 </Link>
               </>
             ) : (
               /* Buyer / Seller Navigation */
               <>
-                {/* Dashboard Home */}
-                <Link
-                  href="/protected"
-                  onClick={() => setMobileOpen(false)}
-                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
-                    isHomeActive
-                      ? "bg-kita-green text-white shadow-flyer"
-                      : "text-muted hover:bg-paper hover:text-ink"
-                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
-                  title="Dashboard"
-                >
-                  <Home className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
-                  {(!collapsed || mobileOpen) && <span>Home</span>}
-                </Link>
+                {/* 1. Buyer & Shopping Navigation */}
+                <div className="flex flex-col gap-1">
+                  {!isCollapsedView && (
+                    <span className="eyebrow px-3.5 pt-1 text-xs text-muted">
+                      Campus Shopping
+                    </span>
+                  )}
 
-                {/* Marketplace */}
-                <Link
-                  href="/protected/marketplace"
-                  onClick={() => setMobileOpen(false)}
-                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
-                    isMarketplaceActive
-                      ? "bg-kita-green text-white shadow-flyer"
-                      : "text-muted hover:bg-paper hover:text-ink"
-                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
-                  title="Marketplace"
-                >
-                  <LayoutGrid className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
-                  {(!collapsed || mobileOpen) && <span>Marketplace</span>}
-                </Link>
+                  {/* Home */}
+                  <Link
+                    href="/protected"
+                    onClick={() => setMobileOpen(false)}
+                    className={`group flex items-center rounded-xl transition-all ${
+                      isCollapsedView
+                        ? "h-11 w-11 mx-auto justify-center"
+                        : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                    } ${
+                      isHomeActive
+                        ? "bg-kita-green text-white shadow-flyer"
+                        : "text-muted hover:bg-paper hover:text-ink"
+                    }`}
+                    title="Home"
+                  >
+                    <Home className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                    {!isCollapsedView && <span>Home</span>}
+                  </Link>
 
-                {/* Seller Studio Area Link */}
-                <Link
-                  href={role === "SELLER" ? "/seller" : "/seller/verification"}
-                  onClick={() => setMobileOpen(false)}
-                  className={`group flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all ${
-                    isSellerActive
-                      ? "bg-kita-green text-white shadow-flyer"
-                      : "text-muted hover:bg-paper hover:text-ink"
-                  } ${collapsed && !mobileOpen ? "justify-center px-0" : ""}`}
-                  title="Seller Studio"
-                >
-                  <Store className="h-5 w-5 flex-shrink-0 text-spark-ink transition-transform group-hover:scale-105" />
-                  {(!collapsed || mobileOpen) && <span>Seller Studio</span>}
-                </Link>
+                  {/* Marketplace */}
+                  <Link
+                    href="/protected/marketplace"
+                    onClick={() => setMobileOpen(false)}
+                    className={`group flex items-center rounded-xl transition-all ${
+                      isCollapsedView
+                        ? "h-11 w-11 mx-auto justify-center"
+                        : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                    } ${
+                      isMarketplaceActive
+                        ? "bg-kita-green text-white shadow-flyer"
+                        : "text-muted hover:bg-paper hover:text-ink"
+                    }`}
+                    title="Marketplace"
+                  >
+                    <LayoutGrid className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                    {!isCollapsedView && <span>Marketplace</span>}
+                  </Link>
+
+                  {/* My Purchases */}
+                  <Link
+                    href="/protected/orders"
+                    onClick={() => setMobileOpen(false)}
+                    className={`group flex items-center rounded-xl transition-all ${
+                      isCollapsedView
+                        ? "h-11 w-11 mx-auto justify-center"
+                        : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                    } ${
+                      isOrdersActive
+                        ? "bg-kita-green text-white shadow-flyer"
+                        : "text-muted hover:bg-paper hover:text-ink"
+                    }`}
+                    title="My Purchases"
+                  >
+                    <Package className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                    {!isCollapsedView && <span>My Purchases</span>}
+                  </Link>
+
+                  {/* Saved Favorites */}
+                  <Link
+                    href="/protected/favorites"
+                    onClick={() => setMobileOpen(false)}
+                    className={`group flex items-center rounded-xl transition-all ${
+                      isCollapsedView
+                        ? "h-11 w-11 mx-auto justify-center"
+                        : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                    } ${
+                      isFavoritesActive
+                        ? "bg-kita-green text-white shadow-flyer"
+                        : "text-muted hover:bg-paper hover:text-ink"
+                    }`}
+                    title="Saved Favorites"
+                  >
+                    <Heart className="h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-105" />
+                    {!isCollapsedView && <span>Saved Favorites</span>}
+                  </Link>
+                </div>
+
+                {/* 2. Merchant / Seller Section with Line Separator */}
+                <div className="flex flex-col gap-1 border-t border-line pt-3 mt-2">
+                  {!isCollapsedView && (
+                    <span className="eyebrow px-3.5 pt-1 text-xs text-muted">
+                      {role === "SELLER" ? "Seller Studio" : "Student Entrepreneur"}
+                    </span>
+                  )}
+
+                  {role === "SELLER" ? (
+                    <>
+                      {/* Seller Studio */}
+                      <Link
+                        href="/seller"
+                        onClick={() => setMobileOpen(false)}
+                        className={`group flex items-center rounded-xl transition-all ${
+                          isCollapsedView
+                            ? "h-11 w-11 mx-auto justify-center"
+                            : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                        } ${
+                          isSellerActive
+                            ? "bg-kita-green text-white shadow-flyer"
+                            : "text-muted hover:bg-paper hover:text-ink"
+                        }`}
+                        title="Seller Studio"
+                      >
+                        <Store className={`h-5 w-5 flex-shrink-0 ${isSellerActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`} />
+                        {!isCollapsedView && <span>Store Catalog</span>}
+                      </Link>
+
+                      {/* Store Orders Management */}
+                      <Link
+                        href="/seller/orders"
+                        onClick={() => setMobileOpen(false)}
+                        className={`group flex items-center rounded-xl transition-all ${
+                          isCollapsedView
+                            ? "h-11 w-11 mx-auto justify-center"
+                            : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                        } ${
+                          isSellerOrdersActive
+                            ? "bg-kita-green text-white shadow-flyer"
+                            : "text-muted hover:bg-paper hover:text-ink"
+                        }`}
+                        title="Store Orders"
+                      >
+                        <Clock className={`h-5 w-5 flex-shrink-0 ${isSellerOrdersActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`} />
+                        {!isCollapsedView && <span>Store Orders</span>}
+                      </Link>
+                    </>
+                  ) : (
+                    <Link
+                      href="/seller/verification"
+                      onClick={() => setMobileOpen(false)}
+                      className={`group flex items-center rounded-xl transition-all ${
+                        isCollapsedView
+                          ? "h-11 w-11 mx-auto justify-center"
+                          : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                      } text-muted hover:bg-paper hover:text-ink`}
+                      title="Become a Seller"
+                    >
+                      <Store className="h-5 w-5 flex-shrink-0 text-spark-ink transition-transform group-hover:scale-105" />
+                      {!isCollapsedView && (
+                        <div className="flex items-center justify-between flex-1 gap-1">
+                          <span>Become a Seller</span>
+                          <span className="rounded-md bg-spark-soft px-1.5 py-0.5 text-xs font-bold text-spark-ink">
+                            Verify
+                          </span>
+                        </div>
+                      )}
+                    </Link>
+                  )}
+                </div>
               </>
             )}
           </nav>
-
-          {/* Dev / Beta Demo Data Toggle (non-admin only) */}
-          {role !== "CAMPUS_ADMIN" && role !== "PLATFORM_ADMIN" && (
-            <div className="pt-4">
-              <MockDataToggle collapsed={collapsed && !mobileOpen} />
-            </div>
-          )}
         </div>
 
-        {/* User Profile Footer */}
-        <div className="p-3 border-t border-line bg-paper/50">
-          <div
-            className={`flex items-center justify-between gap-2 rounded-xl p-2 transition-colors ${
-              collapsed && !mobileOpen ? "justify-center" : ""
-            }`}
-          >
-            <div className="flex items-center gap-2.5 truncate">
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-kita-green text-xs font-extrabold text-white shadow-flyer flex-shrink-0">
-                {initials}
-              </span>
-              {(!collapsed || mobileOpen) && (
-                <div className="flex flex-col truncate">
-                  <span className="text-xs font-bold text-ink truncate leading-tight">
-                    {name}
-                  </span>
-                  <span className="eyebrow text-[0.6rem] text-kita-green">
-                    {role.replace("_", " ")}
+        {/* User Profile Menubar Dropdown Footer */}
+        <div className={`border-t border-line bg-paper/50 ${isCollapsedView ? "p-2 flex justify-center" : "p-3"}`}>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              className={`w-full rounded-2xl transition-all outline-none focus-visible:ring-2 focus-visible:ring-kita-green ${
+                isCollapsedView
+                  ? "flex items-center justify-center p-1 hover:bg-paper-deep"
+                  : "flex items-center justify-between p-2 hover:bg-paper border border-transparent hover:border-line"
+              }`}
+              aria-label="User account menu"
+            >
+              <div className="flex items-center gap-2.5 truncate">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-kita-green text-xs font-extrabold text-white shadow-flyer flex-shrink-0">
+                  {initials}
+                </span>
+                {!isCollapsedView && (
+                  <div className="flex flex-col text-left truncate">
+                    <span className="text-xs font-bold text-ink truncate leading-tight">
+                      {name}
+                    </span>
+                    <span className="eyebrow text-xs text-kita-green">
+                      {role.replace("_", " ")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {!isCollapsedView && (
+                <ChevronsUpDown className="h-4 w-4 text-muted flex-shrink-0" />
+              )}
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              side={isCollapsedView ? "right" : "top"}
+              align={isCollapsedView ? "end" : "start"}
+              sideOffset={4}
+              alignOffset={-4}
+              className="w-64 rounded-2xl p-2 border border-line bg-surface shadow-flyer-lg"
+            >
+              <DropdownMenuLabel className="font-normal p-2">
+                <div className="flex flex-col gap-0.5">
+                  <p className="text-xs font-bold text-ink">{name}</p>
+                  <p className="text-xs text-muted truncate">{email}</p>
+                  <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-kita-green-soft px-2 py-0.5 text-xs font-bold text-kita-green">
+                    <ShieldCheck className="h-3 w-3" />
+                    {role === "SELLER" ? "Verified Seller" : role === "CAMPUS_ADMIN" ? "Administrator" : "Student Member"}
                   </span>
                 </div>
-              )}
-            </div>
+              </DropdownMenuLabel>
 
-            {(!collapsed || mobileOpen) ? (
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={handleLogout}
-                title="Log out"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-destructive/10 hover:text-destructive transition-colors flex-shrink-0"
+              <DropdownMenuSeparator className="my-1 border-line" />
+
+              <DropdownMenuItem
+                onClick={() => setProfileDialogOpen(true)}
+                className="cursor-pointer gap-2.5 rounded-xl p-2 text-xs font-bold text-ink hover:bg-paper transition-colors"
               >
-                <LogOut className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                type="button"
+                <User className="h-3.5 w-3.5 text-muted" />
+                <span>Account Profile</span>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={() => setProfileDialogOpen(true)}
+                className="cursor-pointer gap-2.5 rounded-xl p-2 text-xs font-bold text-ink hover:bg-paper transition-colors"
+              >
+                <Settings className="h-3.5 w-3.5 text-muted" />
+                <span>General Settings</span>
+              </DropdownMenuItem>
+
+              {role === "SELLER" && (
+                <DropdownMenuItem
+                  onClick={() => router.push("/seller")}
+                  className="cursor-pointer gap-2.5 rounded-xl p-2 text-xs font-bold text-kita-green hover:bg-kita-green-soft transition-colors"
+                >
+                  <Store className="h-3.5 w-3.5" />
+                  <span>Seller Studio</span>
+                </DropdownMenuItem>
+              )}
+
+              {role === "BUYER" && (
+                <DropdownMenuItem
+                  onClick={() => router.push("/seller/verification")}
+                  className="cursor-pointer gap-2.5 rounded-xl p-2 text-xs font-bold text-spark-ink hover:bg-spark-soft transition-colors"
+                >
+                  <Store className="h-3.5 w-3.5" />
+                  <span>Become a Seller</span>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator className="my-1 border-line" />
+
+              <DropdownMenuItem
                 disabled={isPending}
                 onClick={handleLogout}
-                title="Log out"
-                className="hidden"
-              />
-            )}
-          </div>
+                className="cursor-pointer gap-2.5 rounded-xl p-2 text-xs font-bold text-destructive hover:bg-destructive/10 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                <span>{isPending ? "Logging out…" : "Log Out"}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </aside>
+
+      {/* Account Profile & Settings Dialog */}
+      <AccountSettingsDialog
+        user={user}
+        profile={profile}
+        open={profileDialogOpen}
+        onOpenChange={setProfileDialogOpen}
+      />
     </>
   );
 }

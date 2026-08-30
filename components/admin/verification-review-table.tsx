@@ -1,28 +1,36 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   Search,
-  Filter,
   CheckCircle2,
   XCircle,
   Clock,
   IdCard,
-  ExternalLink,
   Shield,
   Loader2,
-  Eye,
-  AlertTriangle,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  User,
+  GraduationCap,
+  Calendar,
+  Mail,
+  X,
+  Check,
 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { approveVerificationAction } from "@/app/actions/verification";
 import { RejectDialog } from "./reject-dialog";
+import { createClient } from "@/lib/supabase/client";
 
 export interface AdminVerificationItem {
   id: string;
@@ -43,20 +51,25 @@ export interface AdminVerificationItem {
 }
 
 interface VerificationReviewTableProps {
-  verifications: AdminVerificationItem[];
+  initialVerifications: AdminVerificationItem[];
 }
 
-export function VerificationReviewTable({
-  verifications,
-}: VerificationReviewTableProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("ALL");
-  const [previewImage, setPreviewImage] = useState<{
-    url: string;
-    name: string;
-    studentId: string;
-  } | null>(null);
+const PAGE_SIZE = 8;
 
+export function VerificationReviewTable({
+  initialVerifications,
+}: VerificationReviewTableProps) {
+  const router = useRouter();
+  const [verifications, setVerifications] = useState<AdminVerificationItem[]>(initialVerifications);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("PENDING");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Selected verification for modal inspection
+  const [selectedVerification, setSelectedVerification] = useState<AdminVerificationItem | null>(null);
+
+  // Rejection modal state
   const [rejectApp, setRejectApp] = useState<{
     id: string;
     applicantName: string;
@@ -66,282 +79,460 @@ export function VerificationReviewTable({
   const [isPending, startTransition] = useTransition();
   const [approvingId, setApprovingId] = useState<string | null>(null);
 
-  const filtered = verifications.filter((v) => {
-    const applicantName = v.profile?.full_name || "";
-    const applicantEmail = v.profile?.email || "";
-    const studentId = v.student_id_number || "";
+  useEffect(() => {
+    setVerifications(initialVerifications);
+  }, [initialVerifications]);
 
-    const matchesSearch =
-      searchQuery.trim() === "" ||
-      applicantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      applicantEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      studentId.toLowerCase().includes(searchQuery.toLowerCase());
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
 
-    const matchesStatus =
-      statusFilter === "ALL" || v.status === statusFilter;
+  async function fetchLatestVerifications() {
+    setIsRefreshing(true);
+    try {
+      const supabase = createClient();
+      const { data: dbVerifications } = await supabase
+        .from("student_verifications")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-    return matchesSearch && matchesStatus;
-  });
+      if (dbVerifications && dbVerifications.length > 0) {
+        const userIds = [...new Set(dbVerifications.map((v) => v.user_id).filter(Boolean))];
+        const { data: dbProfiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, email, role")
+          .in("id", userIds);
 
-  function handleApprove(id: string) {
+        const profileMap = new Map(dbProfiles?.map((p) => [p.id, p]) || []);
+
+        const mapped: AdminVerificationItem[] = dbVerifications.map((v) => ({
+          id: v.id,
+          user_id: v.user_id,
+          student_id_number: v.student_id_number,
+          program: v.program,
+          year_level: v.year_level,
+          id_image_url: v.id_image_url,
+          status: v.status as "PENDING" | "APPROVED" | "REJECTED",
+          rejection_reason: v.rejection_reason,
+          created_at: v.created_at,
+          profile: profileMap.get(v.user_id) || null,
+        }));
+
+        setVerifications(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to refresh verifications:", err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
+  // Supabase Realtime channel subscription
+  useEffect(() => {
+    const supabase = createClient();
+    const channel = supabase
+      .channel("admin_verifications_live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "student_verifications" },
+        () => {
+          fetchLatestVerifications();
+          router.refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
+
+  async function handleApprove(id: string) {
     setApprovingId(id);
     startTransition(async () => {
-      await approveVerificationAction(id);
+      const res = await approveVerificationAction(id);
       setApprovingId(null);
+      if (res.success) {
+        setVerifications((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, status: "APPROVED" } : item
+          )
+        );
+        if (selectedVerification?.id === id) {
+          setSelectedVerification(null);
+        }
+        router.refresh();
+      } else {
+        alert(res.message || "Failed to approve verification.");
+      }
     });
   }
 
+  // Filter & Search
+  const filtered = verifications.filter((v) => {
+    const matchesStatus = statusFilter === "ALL" || v.status === statusFilter;
+    const name = v.profile?.full_name?.toLowerCase() || "";
+    const email = v.profile?.email?.toLowerCase() || "";
+    const studentId = v.student_id_number?.toLowerCase() || "";
+    const query = searchQuery.toLowerCase().trim();
+    const matchesSearch = !query || name.includes(query) || email.includes(query) || studentId.includes(query);
+    return matchesStatus && matchesSearch;
+  });
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE) || 1;
+  const paginatedItems = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const pendingCount = verifications.filter((v) => v.status === "PENDING").length;
+  const approvedCount = verifications.filter((v) => v.status === "APPROVED").length;
+  const rejectedCount = verifications.filter((v) => v.status === "REJECTED").length;
+
   return (
-    <>
-      <div className="flex flex-col gap-5 rounded-3xl border border-line bg-surface p-6 shadow-flyer">
-        {/* Controls Bar */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Left Sticky Rail (4 Cols) — Filter & Queue Ledger */}
+      <aside className="lg:col-span-4 flex flex-col gap-5 lg:sticky lg:top-6">
+        {/* Filter Navigation Card */}
+        <div className="flex flex-col border border-line bg-surface p-5 rounded-2xl gap-4">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <span className="eyebrow text-xs text-muted">Queue Filter</span>
+            <button
+              type="button"
+              onClick={fetchLatestVerifications}
+              disabled={isRefreshing}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-ink transition-colors disabled:opacity-50"
+              title="Refresh queue"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin text-kita-green" : ""}`} />
+              <span>{isRefreshing ? "Syncing…" : "Refresh"}</span>
+            </button>
+          </div>
+
+          {/* Status Filter Pills */}
+          <div className="flex flex-col gap-1">
+            {[
+              { id: "PENDING", label: "Pending Review", count: pendingCount, activeClass: "bg-spark-soft text-spark-ink font-bold" },
+              { id: "APPROVED", label: "Approved Sellers", count: approvedCount, activeClass: "bg-kita-green-soft text-kita-green font-bold" },
+              { id: "REJECTED", label: "Rejected", count: rejectedCount, activeClass: "bg-destructive/10 text-destructive font-bold" },
+              { id: "ALL", label: "All Submissions", count: verifications.length, activeClass: "bg-paper-deep text-ink font-bold" },
+            ].map((tab) => {
+              const isSelected = statusFilter === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setStatusFilter(tab.id)}
+                  className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs transition-all ${
+                    isSelected ? tab.activeClass : "text-muted hover:bg-paper hover:text-ink font-semibold"
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                  <span className="font-mono text-xs">{tab.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Search Box */}
+          <div className="relative pt-2 border-t border-line">
+            <Search className="absolute left-3 top-5 -translate-y-1/2 h-3.5 w-3.5 text-muted pointer-events-none" />
             <input
-              type="text"
+              type="search"
+              placeholder="Search student or LRN…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search applicants, ID numbers, or emails…"
-              className="h-10 w-full rounded-xl border border-line bg-paper pl-10 pr-4 text-sm text-ink placeholder:text-muted focus:border-kita-green focus:bg-surface focus:outline-none"
+              className="h-9 w-full rounded-xl border border-line bg-paper pl-8 pr-3 text-xs text-ink placeholder:text-muted focus:border-kita-green focus:bg-surface focus:outline-none"
             />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted hidden sm:block" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="h-10 rounded-xl border border-line bg-paper px-3 text-xs font-semibold text-ink focus:border-kita-green focus:outline-none"
-            >
-              <option value="ALL">All Applications</option>
-              <option value="PENDING">Pending Review</option>
-              <option value="APPROVED">Approved Sellers</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-5 -translate-y-1/2 text-muted hover:text-ink"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="overflow-x-auto rounded-2xl border border-line">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-line bg-paper/60 text-[11px] font-bold uppercase tracking-wider text-muted">
-              <tr>
-                <th className="px-5 py-3.5">Applicant</th>
-                <th className="px-4 py-3.5">Student Credentials</th>
-                <th className="px-4 py-3.5">School ID Photo</th>
-                <th className="px-4 py-3.5">Status</th>
-                <th className="px-4 py-3.5">Submitted</th>
-                <th className="px-5 py-3.5 text-right">Review Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line bg-surface">
-              {filtered.length === 0 ? (
+        {/* Governance Guidelines Box */}
+        <div className="flex flex-col border border-line bg-surface p-5 rounded-2xl gap-2.5">
+          <div className="flex items-center gap-2">
+            <Shield className="h-4 w-4 text-kita-green" />
+            <span className="text-xs font-bold text-ink">Verification Criteria</span>
+          </div>
+          <ul className="text-xs text-muted leading-relaxed flex flex-col gap-1.5 list-disc list-inside">
+            <li>Matches registered LYFJSHS student roster.</li>
+            <li>Valid school year and grade level.</li>
+            <li>Clear, unblurred photo of school ID.</li>
+          </ul>
+        </div>
+      </aside>
+
+      {/* Right Main Stream (8 Cols) — Line-Ruled Verification Table */}
+      <main className="lg:col-span-8 flex flex-col gap-4 min-w-0">
+        <div className="flex flex-col border border-line bg-surface rounded-2xl overflow-hidden">
+          {/* Table Header Strip */}
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-line bg-paper/40">
+            <span className="font-display font-bold text-sm text-ink">
+              Application Queue ({filtered.length})
+            </span>
+            <span className="text-xs text-muted">
+              Page {currentPage} of {totalPages}
+            </span>
+          </div>
+
+          {/* Line-Ruled Rows */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-line bg-paper/20 text-xs font-bold uppercase tracking-wider text-muted">
                 <tr>
-                  <td colSpan={6} className="px-5 py-12 text-center">
-                    <div className="flex flex-col items-center justify-center gap-2 text-muted">
-                      <Shield className="h-8 w-8 text-muted/50" />
-                      <p className="font-semibold text-ink">No verification records found</p>
-                      <p className="text-xs">
-                        {statusFilter !== "ALL" || searchQuery
-                          ? "Try clearing your filters."
-                          : "No student seller applications have been submitted yet."}
-                      </p>
-                    </div>
-                  </td>
+                  <th className="px-5 py-3">Applicant</th>
+                  <th className="px-4 py-3">Student LRN</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-5 py-3 text-right">Submitted</th>
                 </tr>
-              ) : (
-                filtered.map((v) => {
-                  const applicantName = v.profile?.full_name || "Applicant";
-                  const applicantEmail = v.profile?.email || "";
-                  const initials = applicantName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .substring(0, 2)
-                    .toUpperCase();
+              </thead>
+              <tbody className="divide-y divide-line">
+                {paginatedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-5 py-12 text-center text-muted">
+                      No verification records match the current filter.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((v) => {
+                    const applicantName = v.profile?.full_name || "Student Applicant";
+                    const applicantEmail = v.profile?.email || "";
+                    const initials = applicantName
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .substring(0, 2)
+                      .toUpperCase();
 
-                  const formattedDate = new Date(v.created_at).toLocaleDateString(
-                    "en-PH",
-                    {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    }
-                  );
+                    const formattedDate = new Date(v.created_at).toLocaleDateString(
+                      "en-PH",
+                      { month: "short", day: "numeric", year: "numeric" }
+                    );
 
-                  return (
-                    <tr
-                      key={v.id}
-                      className="group hover:bg-paper/40 transition-colors"
-                    >
-                      {/* Applicant Profile */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-kita-green text-xs font-bold text-white shadow-sm flex-shrink-0">
-                            {initials}
-                          </span>
-                          <div className="flex flex-col truncate max-w-xs">
-                            <span className="font-display font-bold text-sm text-ink truncate">
-                              {applicantName}
+                    return (
+                      <tr
+                        key={v.id}
+                        onClick={() => setSelectedVerification(v)}
+                        className="group cursor-pointer hover:bg-paper/60 transition-colors"
+                        title="Click row to inspect credentials"
+                      >
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-kita-green text-xs font-bold text-white shadow-sm flex-shrink-0 group-hover:scale-105 transition-transform">
+                              {initials}
                             </span>
-                            <span className="text-xs text-muted truncate">
-                              {applicantEmail}
-                            </span>
+                            <div className="flex flex-col truncate max-w-xs">
+                              <span className="font-display font-bold text-sm text-ink truncate group-hover:text-kita-green transition-colors">
+                                {applicantName}
+                              </span>
+                              <span className="text-xs text-muted truncate">{applicantEmail}</span>
+                            </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Credentials */}
-                      <td className="px-4 py-4">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-mono font-bold text-xs text-ink">
+                        <td className="px-4 py-3.5">
+                          <span className="font-mono font-bold text-xs text-ink bg-paper px-2 py-0.5 rounded border border-line">
                             {v.student_id_number}
                           </span>
-                          <span className="text-xs text-muted truncate max-w-xs">
-                            {v.program} • {v.year_level}
-                          </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* School ID Card Image */}
-                      <td className="px-4 py-4">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPreviewImage({
-                              url: v.id_image_url,
-                              name: applicantName,
-                              studentId: v.student_id_number,
-                            })
-                          }
-                          className="group/img relative flex items-center gap-2 rounded-xl border border-line bg-paper p-1.5 hover:border-kita-green transition-all"
-                        >
-                          <div className="relative h-9 w-14 flex-shrink-0 overflow-hidden rounded-lg">
-                            <Image
-                              src={v.id_image_url}
-                              alt="ID Thumbnail"
-                              fill
-                              className="object-cover"
-                            />
-                          </div>
-                          <span className="text-[11px] font-semibold text-muted group-hover/img:text-kita-green pr-1">
-                            Inspect
-                          </span>
-                        </button>
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-4">
-                        {v.status === "PENDING" && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-spark-soft px-2.5 py-1 text-xs font-bold text-spark-ink">
-                            <span className="h-1.5 w-1.5 rounded-full bg-spark-ink animate-pulse" />
-                            Pending Review
-                          </span>
-                        )}
-                        {v.status === "APPROVED" && (
-                          <span className="inline-flex items-center gap-1.5 rounded-full bg-kita-green-soft px-2.5 py-1 text-xs font-bold text-kita-green">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Approved
-                          </span>
-                        )}
-                        {v.status === "REJECTED" && (
-                          <div className="flex flex-col gap-0.5">
-                            <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-bold text-destructive">
-                              <XCircle className="h-3.5 w-3.5" />
+                        <td className="px-4 py-3.5">
+                          {v.status === "PENDING" && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full bg-spark-soft px-2.5 py-0.5 text-xs font-bold text-spark-ink">
+                              <span className="h-1.5 w-1.5 rounded-full bg-spark-ink animate-pulse" />
+                              Pending
+                            </span>
+                          )}
+                          {v.status === "APPROVED" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-kita-green-soft px-2.5 py-0.5 text-xs font-bold text-kita-green">
+                              <Check className="h-3 w-3" />
+                              Approved
+                            </span>
+                          )}
+                          {v.status === "REJECTED" && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-0.5 text-xs font-bold text-destructive">
+                              <XCircle className="h-3 w-3" />
                               Rejected
                             </span>
-                            {v.rejection_reason && (
-                              <span className="text-[10px] text-muted truncate max-w-xs" title={v.rejection_reason}>
-                                {v.rejection_reason}
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </td>
+                          )}
+                        </td>
 
-                      {/* Submission Date */}
-                      <td className="px-4 py-4 text-xs text-muted">
-                        {formattedDate}
-                      </td>
+                        <td className="px-5 py-3.5 text-right font-mono text-xs text-muted">
+                          {formattedDate}
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
-                      {/* Actions */}
-                      <td className="px-5 py-4 text-right">
-                        {v.status === "PENDING" ? (
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              disabled={isPending || approvingId === v.id}
-                              onClick={() => handleApprove(v.id)}
-                              className="inline-flex items-center gap-1.5 rounded-xl bg-kita-green px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-kita-green-deep active:scale-95 transition-all disabled:opacity-50"
-                            >
-                              {approvingId === v.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <CheckCircle2 className="h-3.5 w-3.5" />
-                              )}
-                              <span>Approve</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              disabled={isPending || approvingId === v.id}
-                              onClick={() =>
-                                setRejectApp({
-                                  id: v.id,
-                                  applicantName,
-                                  studentId: v.student_id_number,
-                                })
-                              }
-                              className="inline-flex items-center gap-1 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
-                            >
-                              <XCircle className="h-3.5 w-3.5" />
-                              <span>Reject</span>
-                            </button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted">Reviewed</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+          {/* Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-line px-5 py-3 bg-paper/20">
+              <span className="text-xs text-muted">
+                Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="rounded-lg border border-line bg-surface p-1.5 text-ink hover:bg-paper disabled:opacity-40"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="rounded-lg border border-line bg-surface p-1.5 text-ink hover:bg-paper disabled:opacity-40"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
+      </main>
 
-      {/* Full-size ID Inspection Modal */}
-      {previewImage && (
+      {/* Modal: Full ID Inspection */}
+      {selectedVerification && (
         <Dialog
-          open={!!previewImage}
-          onOpenChange={(open) => !open && setPreviewImage(null)}
+          open={!!selectedVerification}
+          onOpenChange={(open) => {
+            if (!open) setSelectedVerification(null);
+          }}
         >
-          <DialogContent className="max-w-xl rounded-3xl p-6">
-            <DialogHeader>
-              <DialogTitle className="font-display text-lg font-bold text-ink">
-                Student ID: {previewImage.name} ({previewImage.studentId})
+          <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto rounded-3xl p-6 sm:p-7 border border-line bg-surface shadow-flyer-lg">
+            <DialogHeader className="flex flex-col gap-1 border-b border-line pb-4">
+              <div className="flex items-center justify-between">
+                <span className="eyebrow text-muted">Applicant Inspection</span>
+                {selectedVerification.status === "PENDING" && (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-spark-soft px-3 py-1 text-xs font-bold text-spark-ink">
+                    <span className="h-1.5 w-1.5 rounded-full bg-spark-ink animate-pulse" />
+                    Pending Review
+                  </span>
+                )}
+              </div>
+              <DialogTitle className="font-display text-xl font-bold text-ink">
+                {selectedVerification.profile?.full_name || "Student Applicant"}
               </DialogTitle>
+              <DialogDescription className="text-xs text-muted">
+                Submitted on {new Date(selectedVerification.created_at).toLocaleString("en-PH")}
+              </DialogDescription>
             </DialogHeader>
-            <div className="relative h-72 sm:h-96 w-full overflow-hidden rounded-2xl border border-line bg-paper-deep shadow-inner mt-2">
-              <Image
-                src={previewImage.url}
-                alt="Student ID card full view"
-                fill
-                className="object-contain"
-              />
+
+            <div className="flex flex-col gap-5 mt-2">
+              {/* Student Metadata Card */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-2xl bg-paper border border-line text-xs">
+                <div className="flex flex-col">
+                  <span className="text-muted">LRN / ID</span>
+                  <span className="font-mono font-bold text-ink">{selectedVerification.student_id_number}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted">Program / Strand</span>
+                  <span className="font-bold text-ink">{selectedVerification.program || "General"}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted">Year Level</span>
+                  <span className="font-bold text-ink">{selectedVerification.year_level || "Senior High"}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted">Email</span>
+                  <span className="font-semibold text-ink truncate">{selectedVerification.profile?.email || "N/A"}</span>
+                </div>
+              </div>
+
+              {/* ID Card Photo Preview */}
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-ink">Submitted Student ID Card:</span>
+                <div className="relative h-64 sm:h-72 w-full overflow-hidden rounded-2xl border border-line bg-paper-deep shadow-inner">
+                  {selectedVerification.id_image_url ? (
+                    <Image
+                      src={selectedVerification.id_image_url}
+                      alt="Student ID Card"
+                      fill
+                      className="object-contain p-2"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-xs text-muted">
+                      No ID photo provided
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              {selectedVerification.status === "PENDING" && (
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
+                  <button
+                    type="button"
+                    disabled={isPending || approvingId === selectedVerification.id}
+                    onClick={() => {
+                      const app = selectedVerification;
+                      setSelectedVerification(null);
+                      setRejectApp({
+                        id: app.id,
+                        applicantName: app.profile?.full_name || "Applicant",
+                        studentId: app.student_id_number,
+                      });
+                    }}
+                    className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                  >
+                    Reject Application
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isPending || approvingId === selectedVerification.id}
+                    onClick={() => handleApprove(selectedVerification.id)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-kita-green px-5 py-2 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {approvingId === selectedVerification.id ? (
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Activating…
+                      </span>
+                    ) : (
+                      "Approve & Activate Seller"
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>
       )}
 
-      {/* Rejection Feedback Dialog */}
-      <RejectDialog
-        application={rejectApp}
-        open={!!rejectApp}
-        onOpenChange={(open) => !open && setRejectApp(null)}
-      />
-    </>
+      {/* Reject Feedback Dialog */}
+      {rejectApp && (
+        <RejectDialog
+          application={rejectApp}
+          open={!!rejectApp}
+          onOpenChange={(open) => {
+            if (!open) setRejectApp(null);
+          }}
+          onRejected={() => {
+            setVerifications((prev) =>
+              prev.map((item) =>
+                item.id === rejectApp.id ? { ...item, status: "REJECTED" } : item
+              )
+            );
+            setRejectApp(null);
+            router.refresh();
+          }}
+        />
+      )}
+    </div>
   );
 }

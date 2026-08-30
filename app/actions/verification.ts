@@ -96,12 +96,12 @@ export async function approveVerificationAction(
   // 1. Fetch verification application
   const { data: verification, error: fetchError } = await supabase
     .from("student_verifications")
-    .select("id, user_id, profile:profiles(id, full_name, email)")
+    .select("id, user_id")
     .eq("id", verificationId)
-    .single();
+    .maybeSingle();
 
   if (fetchError || !verification) {
-    return { success: false, message: "Verification application not found." };
+    return { success: false, message: fetchError?.message || "Verification application not found." };
   }
 
   const applicantId = verification.user_id;
@@ -131,7 +131,14 @@ export async function approveVerificationAction(
     })
     .eq("id", applicantId);
 
-  // 4. Ensure store is provisioned
+  // 4. Fetch applicant name for store naming
+  const { data: applicantProfile } = await supabase
+    .from("profiles")
+    .select("full_name")
+    .eq("id", applicantId)
+    .maybeSingle();
+
+  // 5. Ensure store is provisioned
   const { data: existingStore } = await supabase
     .from("stores")
     .select("id")
@@ -139,11 +146,8 @@ export async function approveVerificationAction(
     .maybeSingle();
 
   if (!existingStore) {
-    const rawProfile = Array.isArray(verification.profile)
-      ? verification.profile[0]
-      : verification.profile;
-    const applicantName = rawProfile?.full_name || "Student";
-    const storeName = `${applicantName}'s Campus Corner`;
+    const applicantName = applicantProfile?.full_name || "Student";
+    const storeName = `${applicantName}'s Campus Store`;
     const slug = `${slugify(storeName)}-${Math.random().toString(36).substring(2, 6)}`;
 
     await supabase.from("stores").insert({

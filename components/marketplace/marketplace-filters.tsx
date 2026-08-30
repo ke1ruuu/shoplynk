@@ -19,7 +19,7 @@ interface MarketplaceSearchBarProps {
 }
 
 /**
- * Top Search Bar — stands alone at the top of the marketplace page.
+ * Flatline Top Search Bar
  */
 export function MarketplaceSearchBar({
   searchQuery,
@@ -33,10 +33,10 @@ export function MarketplaceSearchBar({
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted pointer-events-none" />
         <Input
           type="search"
-          placeholder="Search products, treats, notes, or services across campus…"
+          placeholder="Search campus catalog, snacks, stationery, binders, or merchandise…"
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="h-12 pl-11 pr-10 rounded-2xl border-line bg-surface text-base text-ink placeholder:text-muted shadow-flyer focus-visible:ring-kita-green"
+          className="h-11 pl-11 pr-10 rounded-xl border-line bg-surface text-sm text-ink placeholder:text-muted focus-visible:ring-kita-green"
         />
         {searchQuery && (
           <button
@@ -54,7 +54,7 @@ export function MarketplaceSearchBar({
         <button
           type="button"
           onClick={onToggleMobileFilters}
-          className={`lg:hidden flex h-12 items-center gap-2 rounded-2xl border px-4 text-sm font-semibold shadow-flyer transition-all ${
+          className={`lg:hidden flex h-11 items-center gap-2 rounded-xl border px-4 text-xs font-bold transition-all ${
             hasActiveFilters
               ? "border-kita-green bg-kita-green-soft text-kita-green"
               : "border-line bg-surface text-ink hover:bg-paper"
@@ -89,7 +89,7 @@ const SORT_OPTIONS: { id: "newest" | "price-asc" | "price-desc"; label: string }
 ];
 
 /**
- * Left Sidebar Filter Panel — houses Categories, Sort/Arrivals, Price Range, and Reset.
+ * Flatline Left Rail Filter Panel (Nike / Amazon line-ruled style)
  */
 export function MarketplaceSidebarFilters({
   categories,
@@ -105,14 +105,11 @@ export function MarketplaceSidebarFilters({
   hasActiveFilters,
 }: MarketplaceSidebarFiltersProps) {
   return (
-    <div className="flex flex-col gap-6 rounded-2xl border border-line bg-surface p-5 shadow-flyer">
+    <div className="flex flex-col gap-5 border border-line bg-surface p-5 rounded-2xl">
       <div className="flex items-center justify-between border-b border-line pb-3">
-        <div className="flex items-center gap-2">
-          <SlidersHorizontal className="h-4 w-4 text-kita-green" />
-          <h3 className="font-display text-base font-extrabold text-ink">
-            Filters
-          </h3>
-        </div>
+        <h3 className="font-display text-sm font-bold text-ink uppercase tracking-wider">
+          Filter Catalog
+        </h3>
         {hasActiveFilters && (
           <button
             type="button"
@@ -120,29 +117,26 @@ export function MarketplaceSidebarFilters({
             className="text-xs font-semibold text-kita-green hover:underline flex items-center gap-1"
           >
             <X className="h-3 w-3" />
-            Reset all
+            Clear
           </button>
         )}
       </div>
 
       {/* 1. Categories Filter Section */}
-      <div className="flex flex-col gap-2.5">
-        <span className="eyebrow text-xs text-muted flex items-center gap-1.5">
-          <Tag className="h-3 w-3 text-kita-green" />
-          Categories
-        </span>
+      <div className="flex flex-col gap-2">
+        <span className="eyebrow text-xs text-muted">Categories</span>
 
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-0.5">
           <button
             type="button"
             onClick={() => onSelectCategory("all")}
-            className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+            className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-all text-left ${
               selectedCategory === "all"
-                ? "bg-kita-green text-white shadow-flyer"
-                : "text-muted hover:bg-paper hover:text-ink"
+                ? "bg-kita-green-soft text-kita-green font-bold"
+                : "text-muted hover:text-ink hover:bg-paper"
             }`}
           >
-            <span>All Items</span>
+            <span>All Categories</span>
           </button>
 
           {categories.map((cat) => {
@@ -152,10 +146,10 @@ export function MarketplaceSidebarFilters({
                 key={cat.id}
                 type="button"
                 onClick={() => onSelectCategory(cat.slug)}
-                className={`flex items-center justify-between rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs transition-all text-left ${
                   isActive
-                    ? "bg-kita-green text-white shadow-flyer"
-                    : "text-muted hover:bg-paper hover:text-ink"
+                    ? "bg-kita-green-soft text-kita-green font-bold"
+                    : "text-muted hover:text-ink hover:bg-paper"
                 }`}
               >
                 <span>{cat.name}</span>
@@ -166,11 +160,8 @@ export function MarketplaceSidebarFilters({
       </div>
 
       {/* 2. Sort / Arrivals Section */}
-      <div className="flex flex-col gap-2.5 border-t border-line pt-4">
-        <span className="eyebrow text-xs text-muted flex items-center gap-1.5">
-          <ArrowUpDown className="h-3 w-3 text-kita-green" />
-          Sort By
-        </span>
+      <div className="flex flex-col gap-2 border-t border-line pt-4">
+        <span className="eyebrow text-xs text-muted">Sort By</span>
 
         <div className="flex flex-col gap-1">
           {SORT_OPTIONS.map((opt) => {
@@ -178,10 +169,10 @@ export function MarketplaceSidebarFilters({
             return (
               <label
                 key={opt.id}
-                className={`flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
+                className={`flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-all ${
                   isSelected
                     ? "bg-kita-green-soft text-kita-green font-bold"
-                    : "text-muted hover:bg-paper hover:text-ink"
+                    : "text-muted hover:text-ink hover:bg-paper"
                 }`}
               >
                 <input
@@ -205,12 +196,12 @@ export function MarketplaceSidebarFilters({
       </div>
 
       {/* 3. Price Range Section */}
-      <div className="flex flex-col gap-2.5 border-t border-line pt-4">
+      <div className="flex flex-col gap-2 border-t border-line pt-4">
         <span className="eyebrow text-xs text-muted">Price Range</span>
 
         <div className="flex items-center gap-2">
           <div className="relative flex-1">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono text-muted">
               ₱
             </span>
             <Input
@@ -218,12 +209,12 @@ export function MarketplaceSidebarFilters({
               placeholder="Min"
               value={minPrice}
               onChange={(e) => onMinPriceChange(e.target.value)}
-              className="h-9 pl-6 pr-2 rounded-lg text-xs"
+              className="h-8 pl-6 pr-2 rounded-lg text-xs bg-paper border-line"
             />
           </div>
           <span className="text-xs text-muted">–</span>
           <div className="relative flex-1">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-mono text-muted">
               ₱
             </span>
             <Input
@@ -231,20 +222,20 @@ export function MarketplaceSidebarFilters({
               placeholder="Max"
               value={maxPrice}
               onChange={(e) => onMaxPriceChange(e.target.value)}
-              className="h-9 pl-6 pr-2 rounded-lg text-xs"
+              className="h-8 pl-6 pr-2 rounded-lg text-xs bg-paper border-line"
             />
           </div>
         </div>
       </div>
 
-      {/* Reset Button at bottom of sidebar panel */}
+      {/* Reset Button */}
       {hasActiveFilters && (
         <button
           type="button"
           onClick={onClearFilters}
-          className="mt-2 w-full rounded-xl border border-line bg-paper py-2.5 text-xs font-semibold text-ink hover:bg-surface transition-colors"
+          className="mt-1 w-full rounded-xl border border-line bg-paper py-2 text-xs font-bold text-ink hover:bg-paper-deep transition-colors"
         >
-          Reset all filters
+          Reset Filters
         </button>
       )}
     </div>

@@ -157,6 +157,20 @@ export async function getCurrentUserProfile() {
     .eq("id", user.id)
     .maybeSingle();
 
+  if (profile && profile.role && profile.role !== user.role) {
+    user.role = profile.role;
+    try {
+      await setSessionCookie({
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.full_name,
+        role: profile.role,
+      });
+    } catch {
+      // Safe to ignore in Server Component render
+    }
+  }
+
   return { user, profile };
 }
 

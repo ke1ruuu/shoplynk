@@ -5,27 +5,29 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Search,
-  Filter,
-  MoreVertical,
   Edit,
   Trash2,
   ExternalLink,
   Package,
+  ImageOff,
   Clock,
-  CheckCircle2,
-  EyeOff,
-  AlertTriangle,
-  Archive,
-  Plus,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { NativeSelect } from "@/components/ui/native-select";
 import { toggleProductStatusAction } from "@/app/actions/seller";
+import { categoryIcon } from "@/lib/category-icons";
+import { peso } from "@/lib/format";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { Panel } from "@/components/dashboard/panel";
+import { StatusPill, productStatus } from "@/components/dashboard/status-pill";
+import { IconButton, IconLink } from "@/components/dashboard/icon-button";
 import type { CategoryOption, ProductToEdit } from "./product-form-modal";
 
 export interface SellerProductItem {
@@ -52,13 +54,27 @@ export interface SellerProductItem {
   }[];
 }
 
+type ProductStatus = SellerProductItem["status"];
+
 interface ProductTableProps {
   products: SellerProductItem[];
   categories: CategoryOption[];
-  onEditProduct: (product: ProductToEdit) => void;
+  onEditProduct?: (product: ProductToEdit) => void;
   onDeleteProduct: (product: { id: string; title: string }) => void;
-  onAddNew: () => void;
+  onAddNew?: () => void;
 }
+
+/** The four states a listing can be put into, in the order a seller reaches for them. */
+const STATUS_CHOICES: { value: ProductStatus; label: string; hint: string }[] = [
+  { value: "ACTIVE", label: "Live", hint: "Buyers can order it" },
+  { value: "DRAFT", label: "Draft", hint: "Hidden from your storefront" },
+  { value: "OUT_OF_STOCK", label: "Out of stock", hint: "Shown, but not orderable" },
+  { value: "ARCHIVED", label: "Archived", hint: "Kept, off your storefront" },
+];
+
+/** Same control styling for the search field and the two filter selects. */
+const FIELD =
+  "h-9 rounded-md border border-line bg-paper text-sm text-ink transition-colors focus:border-line-strong focus:bg-surface";
 
 export function ProductTable({
   products,
@@ -70,339 +86,460 @@ export function ProductTable({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
+  /** Which row is mid-save, so only that row shows the pending treatment. */
+  const [savingId, setSavingId] = useState<string | null>(null);
 
-  // Filter products
   const filteredProducts = products.filter((p) => {
+    const q = searchQuery.trim().toLowerCase();
     const matchesSearch =
-      searchQuery.trim() === "" ||
-      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      q === "" ||
+      p.title.toLowerCase().includes(q) ||
+      (p.description ?? "").toLowerCase().includes(q);
 
-    const matchesCategory =
-      selectedCategory === "ALL" || p.category_id === selectedCategory;
+    const matchesCategory = selectedCategory === "ALL" || p.category_id === selectedCategory;
 
     const matchesStatus =
       selectedStatus === "ALL" ||
-      (selectedStatus === "ACTIVE" && p.status === "ACTIVE") ||
-      (selectedStatus === "DRAFT" && p.status === "DRAFT") ||
-      (selectedStatus === "OUT_OF_STOCK" && (p.status === "OUT_OF_STOCK" || p.stock === 0)) ||
-      (selectedStatus === "ARCHIVED" && p.status === "ARCHIVED");
+      (selectedStatus === "OUT_OF_STOCK"
+        ? p.status === "OUT_OF_STOCK" || p.stock === 0
+        : p.status === selectedStatus);
 
     return matchesSearch && matchesCategory && matchesStatus;
   });
 
-  function handleStatusToggle(
-    productId: string,
-    newStatus: "ACTIVE" | "DRAFT" | "OUT_OF_STOCK" | "ARCHIVED"
-  ) {
+  // Distinguishes "you have no products" from "your filters hid them".
+  const isFiltered =
+    searchQuery.trim() !== "" || selectedCategory !== "ALL" || selectedStatus !== "ALL";
+
+  function clearFilters() {
+    setSearchQuery("");
+    setSelectedCategory("ALL");
+    setSelectedStatus("ALL");
+  }
+
+  function handleStatusToggle(productId: string, newStatus: ProductStatus) {
+    setSavingId(productId);
     startTransition(async () => {
       await toggleProductStatusAction(productId, newStatus);
+      setSavingId(null);
     });
   }
 
+  function editPayload(p: SellerProductItem): ProductToEdit {
+    return {
+      id: p.id,
+      title: p.title,
+      category_id: p.category_id,
+      price: p.price,
+      stock: p.stock,
+      prep_time_minutes: p.prep_time_minutes,
+      status: p.status,
+      description: p.description,
+      image_url: p.images?.[0]?.image_url,
+    };
+  }
+
+  const clearButton = (
+    <button
+      type="button"
+      onClick={clearFilters}
+      className="inline-flex h-9 items-center rounded-md border border-line bg-surface px-3 text-sm font-semibold text-ink transition-colors hover:bg-paper-deep"
+    >
+      Clear filters
+    </button>
+  );
+
+  const emptyBody = isFiltered ? (
+    <EmptyState
+      variant="filtered"
+      icon={Package}
+      title="No listings match those filters"
+      body="Nothing in your catalog fits the current search, category, and status together."
+      action={clearButton}
+    />
+  ) : (
+    <EmptyState
+      icon={Package}
+      title="Your catalog is empty"
+      body="Products you add here appear on your storefront for LYFJSHS members to browse, order, and pick up. Each one needs a photo, a price, and a stock count."
+      action={
+        <Link
+          href="/seller/products/new"
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-kita-green px-3.5 text-sm font-semibold text-white shadow-flyer transition-colors hover:bg-kita-green-deep"
+        >
+          Add your first product
+        </Link>
+      }
+    />
+  );
+
   return (
-    <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-6 shadow-flyer">
-      {/* Header Controls (Search, Filters, Counter) */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        {/* Search Bar */}
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
+    <Panel
+      flush
+      heading="Products"
+      aside={
+        products.length > 0 ? (
+          <span className="text-xs text-muted">
+            <span className="tabular font-semibold text-ink">{filteredProducts.length}</span>
+            {filteredProducts.length !== products.length && (
+              <> of <span className="tabular">{products.length}</span></>
+            )}{" "}
+            {products.length === 1 && filteredProducts.length === products.length
+              ? "listing"
+              : "listings"}
+          </span>
+        ) : null
+      }
+    >
+      {/* Search and filters. One strip, ruled off from the listings below it. */}
+      <div className="flex flex-col gap-2.5 border-b border-line p-4 sm:flex-row sm:items-center">
+        <div className="relative sm:max-w-xs sm:flex-1">
+          <Search
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+            strokeWidth={1.75}
+            aria-hidden="true"
+          />
           <input
-            type="text"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search your inventory listings…"
-            className="h-10 w-full rounded-xl border border-line bg-paper pl-10 pr-4 text-sm text-ink placeholder:text-muted focus:border-kita-green focus:bg-surface focus:outline-none"
+            placeholder="Search your listings"
+            aria-label="Search your listings"
+            className={`${FIELD} w-full pl-9 pr-3 placeholder:text-muted`}
           />
         </div>
 
-        {/* Filter Controls */}
-        <div className="flex items-center gap-2.5 flex-wrap">
-          {/* Category Filter */}
-          <div className="flex items-center gap-1.5">
-            <Filter className="h-4 w-4 text-muted hidden sm:block" />
-            <select
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="h-10 rounded-xl border border-line bg-paper px-3 text-xs font-semibold text-ink focus:border-kita-green focus:outline-none"
-            >
-              <option value="ALL">All Categories</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+          <NativeSelect
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            aria-label="Filter by category"
+            className="[&>select]:h-9 [&>select]:rounded-md [&>select]:border-line [&>select]:bg-paper [&>select]:text-ink"
+          >
+            <option value="ALL">All categories</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </NativeSelect>
 
-          {/* Status Filter */}
-          <select
+          <NativeSelect
             value={selectedStatus}
             onChange={(e) => setSelectedStatus(e.target.value)}
-            className="h-10 rounded-xl border border-line bg-paper px-3 text-xs font-semibold text-ink focus:border-kita-green focus:outline-none"
+            aria-label="Filter by status"
+            className="[&>select]:h-9 [&>select]:rounded-md [&>select]:border-line [&>select]:bg-paper [&>select]:text-ink"
           >
-            <option value="ALL">All Statuses</option>
-            <option value="ACTIVE">Active (Live)</option>
-            <option value="DRAFT">Drafts (Hidden)</option>
-            <option value="OUT_OF_STOCK">Out of Stock</option>
-            <option value="ARCHIVED">Archived</option>
-          </select>
+            <option value="ALL">All statuses</option>
+            {STATUS_CHOICES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </NativeSelect>
 
-          {/* Add Product Shortcut */}
-          <button
-            type="button"
-            onClick={onAddNew}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-kita-green px-4 py-2 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep active:scale-95 transition-all"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            <span>New Item</span>
-          </button>
+          {isFiltered && clearButton}
         </div>
       </div>
 
-      {/* Table Content */}
-      <div className="overflow-x-auto rounded-2xl border border-line">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-line bg-paper/60 text-[11px] font-bold uppercase tracking-wider text-muted">
-            <tr>
-              <th className="px-5 py-3.5">Product</th>
-              <th className="px-4 py-3.5">Category</th>
-              <th className="px-4 py-3.5">Price</th>
-              <th className="px-4 py-3.5">Stock</th>
-              <th className="px-4 py-3.5">Visibility</th>
-              <th className="px-4 py-3.5 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-line bg-surface">
-            {filteredProducts.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-5 py-12 text-center">
-                  <div className="flex flex-col items-center justify-center gap-3">
-                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-paper-deep text-muted">
-                      <Package className="h-6 w-6" />
-                    </span>
-                    <div className="flex flex-col gap-1">
-                      <p className="font-display text-base font-bold text-ink">
-                        No product listings found
-                      </p>
-                      <p className="text-xs text-muted max-w-sm">
-                        {searchQuery || selectedCategory !== "ALL" || selectedStatus !== "ALL"
-                          ? "Try adjusting your search filters or category selections."
-                          : "You haven't added any products to your storefront yet. Create your first listing now!"}
-                      </p>
-                    </div>
-                    {filteredProducts.length === 0 && searchQuery === "" && (
-                      <button
-                        type="button"
-                        onClick={onAddNew}
-                        className="mt-2 inline-flex items-center gap-2 rounded-xl bg-kita-green px-4 py-2 text-xs font-semibold text-white shadow-flyer hover:bg-kita-green-deep transition-colors"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        <span>Add First Product</span>
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              filteredProducts.map((p) => {
-                const categoryName = p.category?.name || "General";
-                const categoryIcon = p.category?.icon || "🏷️";
-                const primaryImage =
-                  p.images?.[0]?.image_url ||
-                  "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=300&q=80";
+      {filteredProducts.length === 0 ? (
+        emptyBody
+      ) : (
+        <>
+          {/* Wide viewports: the full table. */}
+          <div className="hidden md:block">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-line bg-paper/60 text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-muted">
+                <tr>
+                  <th scope="col" className="px-4 py-2.5 font-semibold">
+                    Product
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 font-semibold">
+                    Category
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 text-right font-semibold">
+                    Price
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 font-semibold">
+                    Stock
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 font-semibold">
+                    Visibility
+                  </th>
+                  <th scope="col" className="px-4 py-2.5 text-right font-semibold">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {filteredProducts.map((p) => {
+                  const saving = savingId === p.id;
 
-                const isLowStock = p.stock > 0 && p.stock <= 5;
-                const isOutOfStock = p.stock === 0 || p.status === "OUT_OF_STOCK";
-
-                return (
-                  <tr
-                    key={p.id}
-                    className="group hover:bg-paper/40 transition-colors"
-                  >
-                    {/* Product Image + Title */}
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center gap-3.5">
-                        <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-xl border border-line bg-paper-deep shadow-sm">
-                          <Image
-                            src={primaryImage}
-                            alt={p.title}
-                            fill
-                            className="object-cover transition-transform group-hover:scale-105"
-                          />
-                        </div>
-                        <div className="flex flex-col truncate max-w-xs sm:max-w-sm">
-                          <span className="font-display font-bold text-sm text-ink truncate group-hover:text-kita-green transition-colors">
-                            {p.title}
-                          </span>
-                          <div className="flex items-center gap-2 text-xs text-muted">
-                            {p.prep_time_minutes > 0 ? (
-                              <span className="flex items-center gap-0.5">
-                                <Clock className="h-3 w-3" />
-                                <span>{p.prep_time_minutes}m lead</span>
-                              </span>
-                            ) : (
-                              <span>Instant pickup</span>
-                            )}
+                  return (
+                    <tr
+                      key={p.id}
+                      aria-busy={saving}
+                      className={`transition-colors hover:bg-paper/50 ${
+                        saving ? "opacity-55" : ""
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <Thumb product={p} />
+                          <div className="flex min-w-0 flex-col">
+                            <Link
+                              href={`/seller/products/${p.id}/edit`}
+                              className="truncate text-left text-sm font-semibold text-ink transition-colors hover:text-kita-green"
+                            >
+                              {p.title}
+                            </Link>
+                            <LeadTime minutes={p.prep_time_minutes} />
                           </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Category */}
-                    <td className="px-4 py-3.5">
-                      <span className="inline-flex items-center gap-1.5 rounded-lg border border-line bg-paper px-2.5 py-1 text-xs font-semibold text-ink">
-                        <span>{categoryIcon}</span>
-                        <span>{categoryName}</span>
-                      </span>
-                    </td>
+                      <td className="px-4 py-3">
+                        <CategoryTag category={p.category} />
+                      </td>
 
-                    {/* Price */}
-                    <td className="px-4 py-3.5 font-display font-extrabold text-sm text-ink">
-                      ₱{Number(p.price).toFixed(2)}
-                    </td>
-
-                    {/* Stock Status */}
-                    <td className="px-4 py-3.5">
-                      <div className="flex items-center gap-1.5">
-                        <span
-                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                            isOutOfStock
-                              ? "bg-destructive/15 text-destructive"
-                              : isLowStock
-                              ? "bg-spark-soft text-spark-ink"
-                              : "bg-kita-green-soft text-kita-green"
-                          }`}
-                        >
-                          {isOutOfStock ? (
-                            "0 in stock"
-                          ) : isLowStock ? (
-                            <>
-                              <AlertTriangle className="h-3 w-3" />
-                              {p.stock} left
-                            </>
-                          ) : (
-                            `${p.stock} in stock`
-                          )}
+                      <td className="px-4 py-3 text-right">
+                        <span className="tabular text-sm font-semibold text-ink">
+                          {peso(p.price)}
                         </span>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Visibility / Status */}
-                    <td className="px-4 py-3.5">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="flex items-center gap-1.5 rounded-lg border border-line bg-paper px-2.5 py-1 text-xs font-bold transition-colors hover:bg-paper-deep focus-visible:outline-kita-green">
-                          {p.status === "ACTIVE" ? (
-                            <span className="flex items-center gap-1 text-kita-green">
-                              <CheckCircle2 className="h-3.5 w-3.5" />
-                              Active
-                            </span>
-                          ) : p.status === "DRAFT" ? (
-                            <span className="flex items-center gap-1 text-muted">
-                              <EyeOff className="h-3.5 w-3.5" />
-                              Draft
-                            </span>
-                          ) : p.status === "OUT_OF_STOCK" ? (
-                            <span className="flex items-center gap-1 text-destructive">
-                              <AlertTriangle className="h-3.5 w-3.5" />
-                              Out of Stock
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1 text-muted">
-                              <Archive className="h-3.5 w-3.5" />
-                              Archived
-                            </span>
-                          )}
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-40 rounded-xl p-1.5 shadow-flyer">
-                          <DropdownMenuItem
-                            onClick={() => handleStatusToggle(p.id, "ACTIVE")}
-                            className="cursor-pointer gap-2 rounded-lg text-xs font-semibold text-kita-green"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            <span>Active (Live)</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleStatusToggle(p.id, "DRAFT")}
-                            className="cursor-pointer gap-2 rounded-lg text-xs font-semibold text-muted"
-                          >
-                            <EyeOff className="h-3.5 w-3.5" />
-                            <span>Draft (Hidden)</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleStatusToggle(p.id, "OUT_OF_STOCK")}
-                            className="cursor-pointer gap-2 rounded-lg text-xs font-semibold text-destructive"
-                          >
-                            <AlertTriangle className="h-3.5 w-3.5" />
-                            <span>Out of Stock</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleStatusToggle(p.id, "ARCHIVED")}
-                            className="cursor-pointer gap-2 rounded-lg text-xs font-semibold text-muted"
-                          >
-                            <Archive className="h-3.5 w-3.5" />
-                            <span>Archive</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
+                      <td className="px-4 py-3">
+                        <StockCell stock={p.stock} status={p.status} />
+                      </td>
 
-                    {/* Actions */}
-                    <td className="px-4 py-3.5 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onEditProduct({
-                              id: p.id,
-                              title: p.title,
-                              category_id: p.category_id,
-                              price: p.price,
-                              stock: p.stock,
-                              prep_time_minutes: p.prep_time_minutes,
-                              status: p.status,
-                              description: p.description,
-                              image_url: p.images?.[0]?.image_url,
-                            })
-                          }
-                          title="Edit product"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-paper hover:text-ink transition-colors"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
+                      <td className="px-4 py-3">
+                        <StatusMenu
+                          product={p}
+                          saving={saving}
+                          onSelect={(s) => handleStatusToggle(p.id, s)}
+                        />
+                      </td>
 
-                        <Link
-                          href={`/protected/marketplace/product/${p.slug}`}
-                          target="_blank"
-                          title="View on marketplace"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-paper hover:text-kita-green transition-colors"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Link>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-0.5">
+                          <IconLink
+                            icon={Edit}
+                            label={`Edit ${p.title}`}
+                            href={`/seller/products/${p.id}/edit`}
+                          />
+                          <IconLink
+                            icon={ExternalLink}
+                            label={`View ${p.title} on the marketplace`}
+                            href={`/protected/marketplace/product/${p.slug}`}
+                            target="_blank"
+                          />
+                          <IconButton
+                            icon={Trash2}
+                            tone="destructive"
+                            label={`Delete ${p.title}`}
+                            disabled={saving}
+                            onClick={() => onDeleteProduct({ id: p.id, title: p.title })}
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onDeleteProduct({
-                              id: p.id,
-                              title: p.title,
-                            })
-                          }
-                          title="Delete product"
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-muted hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          {/* Narrow viewports: the same rows, stacked — never a sideways-scrolling table. */}
+          <ul className="divide-y divide-line md:hidden">
+            {filteredProducts.map((p) => {
+              const saving = savingId === p.id;
+
+              return (
+                <li
+                  key={p.id}
+                  aria-busy={saving}
+                  className={`flex flex-col gap-3 p-4 ${saving ? "opacity-55" : ""}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <Thumb product={p} />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <Link
+                        href={`/seller/products/${p.id}/edit`}
+                        className="text-left text-sm font-semibold leading-snug text-ink hover:text-kita-green transition-colors"
+                      >
+                        {p.title}
+                      </Link>
+                      <span className="tabular text-sm font-semibold text-ink">
+                        {peso(p.price)}
+                      </span>
+                      <LeadTime minutes={p.prep_time_minutes} />
+                    </div>
+                    <div className="flex flex-shrink-0 items-center gap-0.5">
+                      <IconLink
+                        icon={Edit}
+                        label={`Edit ${p.title}`}
+                        href={`/seller/products/${p.id}/edit`}
+                      />
+                      <IconLink
+                        icon={ExternalLink}
+                        label={`View ${p.title} on the marketplace`}
+                        href={`/protected/marketplace/product/${p.slug}`}
+                        target="_blank"
+                      />
+                      <IconButton
+                        icon={Trash2}
+                        tone="destructive"
+                        label={`Delete ${p.title}`}
+                        disabled={saving}
+                        onClick={() => onDeleteProduct({ id: p.id, title: p.title })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <StatusMenu
+                      product={p}
+                      saving={saving}
+                      onSelect={(s) => handleStatusToggle(p.id, s)}
+                    />
+                    <StockCell stock={p.stock} status={p.status} />
+                    <CategoryTag category={p.category} />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </Panel>
+  );
+}
+
+/**
+ * The listing photo. A product without one gets an explicit "no photo" tile —
+ * never a stock image, which would misrepresent what the seller is selling.
+ */
+function Thumb({ product }: { product: SellerProductItem }) {
+  const src = product.images?.[0]?.image_url;
+
+  if (!src) {
+    return (
+      <span
+        className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-md border border-dashed border-line-strong bg-paper text-muted"
+        title="No photo yet"
+      >
+        <ImageOff className="h-4 w-4" strokeWidth={1.75} aria-hidden="true" />
+        <span className="sr-only">No photo yet</span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="relative block h-11 w-11 flex-shrink-0 overflow-hidden rounded-md border border-line bg-paper-deep">
+      <Image src={src} alt="" fill sizes="44px" className="object-cover" />
+    </span>
+  );
+}
+
+function LeadTime({ minutes }: { minutes: number }) {
+  if (minutes <= 0) {
+    return <span className="text-xs text-muted">Ready immediately</span>;
+  }
+
+  return (
+    <span className="flex items-center gap-1 text-xs text-muted">
+      <Clock className="h-3 w-3" strokeWidth={1.75} aria-hidden="true" />
+      <span className="tabular">{minutes}</span> min to prepare
+    </span>
+  );
+}
+
+function CategoryTag({ category }: { category: SellerProductItem["category"] }) {
+  const Icon = categoryIcon(category?.slug);
+
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-md border border-line bg-paper px-2 py-0.5 text-xs font-medium text-ink">
+      <Icon className="h-3.5 w-3.5 text-muted" strokeWidth={1.75} aria-hidden="true" />
+      {category?.name || "Uncategorised"}
+    </span>
+  );
+}
+
+/**
+ * Stock reads as a plain count until it needs attention. Healthy stock is not
+ * tinted — crimson is the primary action colour and would read as an alarm.
+ */
+function StockCell({ stock, status }: { stock: number; status: ProductStatus }) {
+  if (stock === 0 || status === "OUT_OF_STOCK") {
+    return <StatusPill intent="stopped">None left</StatusPill>;
+  }
+
+  if (stock <= 5) {
+    return (
+      <StatusPill intent="warn">
+        <span className="tabular">{stock}</span> left
+      </StatusPill>
+    );
+  }
+
+  return (
+    <span className="text-sm text-muted">
+      <span className="tabular font-semibold text-ink">{stock}</span> in stock
+    </span>
+  );
+}
+
+/** The visibility control: shows the current state, and changes it in place. */
+function StatusMenu({
+  product,
+  saving,
+  onSelect,
+}: {
+  product: SellerProductItem;
+  saving: boolean;
+  onSelect: (status: ProductStatus) => void;
+}) {
+  const current = productStatus(product.status, product.stock);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={saving}
+        aria-label={`Visibility: ${current.label}. Change it`}
+        className="inline-flex items-center gap-1 rounded-md border border-line bg-surface pl-1 pr-1.5 py-0.5 transition-colors hover:bg-paper-deep disabled:pointer-events-none disabled:opacity-40"
+      >
+        <StatusPill intent={current.intent} bare>
+          {saving ? "Saving…" : current.label}
+        </StatusPill>
+        <ChevronDown className="h-3.5 w-3.5 text-muted" strokeWidth={1.75} aria-hidden="true" />
+      </DropdownMenuTrigger>
+
+      <DropdownMenuContent align="start" className="w-60 rounded-md p-1">
+        {STATUS_CHOICES.map((choice) => {
+          const active = product.status === choice.value;
+
+          return (
+            <DropdownMenuItem
+              key={choice.value}
+              onClick={() => !active && onSelect(choice.value)}
+              className="cursor-pointer gap-2.5 rounded-sm px-2 py-1.5"
+            >
+              <Check
+                className={`mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-kita-green ${
+                  active ? "" : "invisible"
+                }`}
+                strokeWidth={2.25}
+                aria-hidden="true"
+              />
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold text-ink">{choice.label}</span>
+                <span className="text-xs text-muted">{choice.hint}</span>
+              </span>
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

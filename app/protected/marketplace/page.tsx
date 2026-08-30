@@ -6,7 +6,6 @@ import { ProtectedLayout } from "@/components/shell/protected-layout";
 import { MarketplaceView } from "@/components/marketplace/marketplace-view";
 import { ProductItem } from "@/components/marketplace/product-card";
 import { Category } from "@/components/marketplace/marketplace-filters";
-import { MOCK_CATEGORIES, MOCK_PRODUCTS } from "@/lib/mock-data";
 
 export const metadata: Metadata = {
   title: "Marketplace — Project Kita",
@@ -34,10 +33,6 @@ export default async function DedicatedMarketplacePage() {
     slug: c.slug,
     icon: c.icon,
   }));
-
-  if (categories.length === 0) {
-    categories = MOCK_CATEGORIES;
-  }
 
   // 2. Fetch live active products from Supabase
   const { data: dbProducts } = await supabase
@@ -104,15 +99,11 @@ export default async function DedicatedMarketplacePage() {
     };
   });
 
-  if (products.length === 0) {
-    products = MOCK_PRODUCTS;
-  }
-
   const userRole = profile?.role || "BUYER";
 
   return (
     <ProtectedLayout user={user} profile={profile}>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8 xl:px-10 transition-all duration-300">
         <MarketplaceView
           initialCategories={categories}
           initialProducts={products}

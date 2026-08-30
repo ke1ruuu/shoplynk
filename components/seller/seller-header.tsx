@@ -2,17 +2,9 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import {
-  Store,
-  MapPin,
-  Clock,
-  CreditCard,
-  Star,
-  Settings,
-  ExternalLink,
-  Plus,
-  Sparkles,
-} from "lucide-react";
+import { MapPin, Clock, CreditCard, Star, Settings, Plus } from "lucide-react";
+import { PageHeader, MetaList } from "@/components/dashboard/page-header";
+import { StatusPill } from "@/components/dashboard/status-pill";
 import { StoreSettingsModal } from "./store-settings-modal";
 
 export interface SellerStoreData {
@@ -33,7 +25,7 @@ export interface SellerStoreData {
 
 interface SellerHeaderProps {
   store: SellerStoreData;
-  onAddProduct: () => void;
+  onAddProduct?: () => void;
 }
 
 export function SellerHeader({ store, onAddProduct }: SellerHeaderProps) {
@@ -41,96 +33,78 @@ export function SellerHeader({ store, onAddProduct }: SellerHeaderProps) {
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-flyer">
-        {/* Subtle decorative background pattern */}
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: "radial-gradient(#D92323 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-          }}
-        />
-
-        <div className="relative z-10 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-          {/* Store Info */}
-          <div className="flex items-start gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-kita-green text-white shadow-flyer flex-shrink-0">
-              <Store className="h-8 w-8" />
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-ink">
-                  {store.name}
-                </h1>
-                <span className="inline-flex items-center gap-1 rounded-full bg-kita-green-soft px-2.5 py-0.5 text-xs font-bold text-kita-green">
-                  <Sparkles className="h-3 w-3" />
-                  Verified Seller Studio
-                </span>
-              </div>
-
-              {store.description && (
-                <p className="text-sm text-muted max-w-xl line-clamp-2">
-                  {store.description}
-                </p>
-              )}
-
-              {/* Meta tags (Pickup, GCash, Hours, Rating) */}
-              <div className="flex items-center gap-3 pt-1 flex-wrap text-xs text-muted">
-                <span className="flex items-center gap-1">
-                  <Star className="h-3.5 w-3.5 fill-spark text-spark" />
-                  <span className="font-bold text-ink">
+      <PageHeader
+        title={store.name}
+        description={store.description || undefined}
+        meta={
+          <MetaList
+            items={[
+              <StatusPill key="status" intent={store.is_active ? "live" : "stopped"} bare>
+                {store.is_active ? "Open for orders" : "Paused — not accepting orders"}
+              </StatusPill>,
+              store.rating_count > 0 ? (
+                <>
+                  <Star
+                    className="h-3.5 w-3.5 fill-spark text-spark"
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
+                  <span className="tabular font-semibold text-ink">
                     {Number(store.rating_avg || 0).toFixed(1)}
                   </span>
-                  <span>({store.rating_count} reviews)</span>
-                </span>
-
-                {store.pickup_locations && (
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3.5 w-3.5 text-kita-green" />
-                    <span>{store.pickup_locations}</span>
+                  <span>
+                    ({store.rating_count} {store.rating_count === 1 ? "review" : "reviews"})
                   </span>
-                )}
-
-                {store.gcash_number && (
-                  <span className="flex items-center gap-1">
-                    <CreditCard className="h-3.5 w-3.5 text-kita-green" />
-                    <span>GCash: {store.gcash_number}</span>
-                  </span>
-                )}
-
-                {store.operating_hours && (
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3.5 w-3.5 text-muted" />
-                    <span>{store.operating_hours}</span>
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                </>
+              ) : (
+                "No reviews yet"
+              ),
+              store.pickup_locations ? (
+                <>
+                  <MapPin className="h-3.5 w-3.5 text-muted" strokeWidth={1.75} aria-hidden="true" />
+                  {store.pickup_locations}
+                </>
+              ) : null,
+              store.operating_hours ? (
+                <>
+                  <Clock className="h-3.5 w-3.5 text-muted" strokeWidth={1.75} aria-hidden="true" />
+                  {store.operating_hours}
+                </>
+              ) : null,
+              store.gcash_number ? (
+                <>
+                  <CreditCard
+                    className="h-3.5 w-3.5 text-muted"
+                    strokeWidth={1.75}
+                    aria-hidden="true"
+                  />
+                  <span className="tabular">GCash {store.gcash_number}</span>
+                </>
+              ) : null,
+            ]}
+          />
+        }
+        actions={
+          <>
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
-              className="inline-flex items-center gap-2 rounded-xl border border-line bg-paper px-4 py-2.5 text-sm font-semibold text-ink transition-colors hover:bg-paper-deep shadow-flyer"
+              className="inline-flex h-9 items-center gap-2 rounded-xl border border-line bg-surface px-3.5 text-sm font-semibold text-ink transition-colors hover:bg-paper-deep"
             >
-              <Settings className="h-4 w-4 text-muted" />
-              <span>Store Settings</span>
+              <Settings className="h-4 w-4 text-muted" strokeWidth={1.75} />
+              Store settings
             </button>
 
-            <button
-              type="button"
-              onClick={onAddProduct}
-              className="inline-flex items-center gap-2 rounded-xl bg-kita-green px-5 py-2.5 text-sm font-semibold text-white shadow-flyer transition-all hover:bg-kita-green-deep active:scale-95"
+            <Link
+              href="/seller/products/new"
+              className="inline-flex h-9 items-center gap-2 rounded-xl bg-kita-green px-3.5 text-sm font-semibold text-white shadow-flyer transition-colors hover:bg-kita-green-deep"
             >
-              <Plus className="h-4 w-4" />
-              <span>Add Product</span>
-            </button>
-          </div>
-        </div>
-      </div>
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              Add product
+            </Link>
+          </>
+        }
+      />
 
       <StoreSettingsModal
         store={store}

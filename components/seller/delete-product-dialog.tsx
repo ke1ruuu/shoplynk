@@ -11,7 +11,6 @@ import {
   AlertDialogCancel,
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
-import { AlertTriangle, Loader2 } from "lucide-react";
 import { deleteProductAction } from "@/app/actions/seller";
 
 interface DeleteProductDialogProps {
@@ -42,41 +41,42 @@ export function DeleteProductDialog({
 
     if (res.message && !res.success) {
       setError(res.message);
-    } else {
-      onOpenChange(false);
-      onDeleted?.();
+      return;
     }
+
+    onOpenChange(false);
+    onDeleted?.();
   }
 
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="rounded-3xl p-6 sm:p-8 max-w-md">
-        <AlertDialogHeader className="flex flex-col items-center text-center gap-3">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive">
-            <AlertTriangle className="h-6 w-6" />
-          </span>
-          <AlertDialogTitle className="font-display text-2xl font-extrabold text-ink">
-            Delete Product?
+      <AlertDialogContent className="max-w-md rounded-lg p-5">
+        <AlertDialogHeader className="flex flex-col gap-1.5 text-left">
+          <AlertDialogTitle className="text-base font-semibold text-ink">
+            Delete this product?
           </AlertDialogTitle>
-          <AlertDialogDescription className="text-sm text-muted">
-            Are you sure you want to remove{" "}
-            <span className="font-bold text-ink">&ldquo;{product.title}&rdquo;</span>? This will
-            permanently remove the listing from the campus marketplace.
+          <AlertDialogDescription className="text-sm leading-relaxed text-muted">
+            <span className="font-semibold text-ink">{product.title}</span> and its photos come
+            off your storefront for good. Buyers with it in a cart will no longer be able to
+            order it. To take it down without losing it, set it to Draft instead.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {error && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive text-center">
+          <p
+            role="alert"
+            className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+          >
             {error}
-          </div>
+          </p>
         )}
 
-        <AlertDialogFooter className="mt-4 flex gap-2 sm:justify-center">
+        <AlertDialogFooter className="mt-1 flex items-center justify-end gap-2">
           <AlertDialogCancel
             disabled={isPending}
-            className="rounded-xl border-line px-5 py-2.5 text-sm font-semibold"
+            className="h-9 rounded-md border-line bg-surface px-3.5 text-sm font-semibold text-ink hover:bg-paper-deep"
           >
-            Keep Listing
+            Cancel
           </AlertDialogCancel>
           <AlertDialogAction
             onClick={(e) => {
@@ -84,16 +84,9 @@ export function DeleteProductDialog({
               handleDelete();
             }}
             disabled={isPending}
-            className="rounded-xl bg-destructive text-white hover:bg-destructive/90 px-5 py-2.5 text-sm font-semibold shadow-flyer"
+            className="h-9 rounded-md bg-destructive px-3.5 text-sm font-semibold text-white hover:bg-destructive/90 disabled:opacity-50"
           >
-            {isPending ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Deleting…
-              </span>
-            ) : (
-              "Yes, Delete"
-            )}
+            {isPending ? "Deleting…" : "Delete product"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

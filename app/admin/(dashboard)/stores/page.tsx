@@ -1,9 +1,14 @@
 import React from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Store, MapPin, Star, Clock, Package, CheckCircle2, AlertCircle } from "lucide-react";
+import { Store, MapPin, Clock, Star } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "@/lib/auth/session";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { StatRow } from "@/components/dashboard/stat-row";
+import { Panel } from "@/components/dashboard/panel";
+import { StatusPill } from "@/components/dashboard/status-pill";
+import { EmptyState } from "@/components/dashboard/empty-state";
 
 export const metadata: Metadata = {
   title: "Campus Stores — Admin Console",
@@ -62,113 +67,144 @@ export default async function AdminStoresPage() {
     };
   });
 
+  const openStores = stores.filter((s) => s.is_active).length;
+  const liveListings = stores.reduce((acc, s) => acc + s.activeProducts, 0);
+  const rated = stores.filter((s) => s.rating_count > 0);
+  const campusRating =
+    rated.length > 0 ? rated.reduce((acc, s) => acc + s.rating_avg, 0) / rated.length : 0;
+
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 flex flex-col gap-8">
-      {/* Header Banner */}
-      <header className="relative overflow-hidden rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-flyer">
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage: "radial-gradient(#D92323 1px, transparent 1px)",
-            backgroundSize: "20px 20px",
-          }}
-        />
+    <main className="w-full max-w-[1600px] flex flex-col gap-7 px-4 py-7 sm:px-6 lg:px-8 xl:px-10 transition-all duration-300">
+      <PageHeader
+        title="Campus stores"
+        description="Verified student storefronts operating at Luis Y. Ferrer Jr. Senior High School."
+      />
 
-        <div className="relative z-10 flex flex-col gap-3 max-w-2xl">
-          <div className="flex items-center gap-2 text-kita-green">
-            <Store className="h-5 w-5" />
-            <span className="eyebrow">Campus Governance</span>
-          </div>
-          <h1 className="font-display text-3xl font-extrabold text-ink leading-tight">
-            Campus Store Directory
-          </h1>
-          <p className="text-sm text-muted leading-relaxed">
-            Monitor verified student storefronts operating across Luis Y. Ferrer Jr. Senior High School.
-          </p>
-        </div>
-      </header>
+      <StatRow
+        stats={[
+          { label: "Storefronts", value: String(stores.length), note: "Registered on campus" },
+          {
+            label: "Open for orders",
+            value: String(openStores),
+            note: openStores === stores.length && stores.length > 0
+              ? "Every store is trading"
+              : `${stores.length - openStores} paused`,
+            tone: openStores > 0 ? "accent" : "default",
+          },
+          { label: "Live listings", value: String(liveListings), note: "Products buyers can see" },
+          {
+            label: "Campus rating",
+            value: campusRating > 0 ? campusRating.toFixed(1) : "—",
+            note: rated.length > 0 ? `Across ${rated.length} rated stores` : "No reviews yet",
+          },
+        ]}
+      />
 
-      {/* Stores List */}
-      <div className="flex flex-col gap-4 rounded-3xl border border-line bg-surface p-6 shadow-flyer">
-        <div className="flex items-center justify-between border-b border-line pb-4">
-          <div className="flex items-center gap-2">
-            <Store className="h-5 w-5 text-kita-green" />
-            <h2 className="font-display text-xl font-bold text-ink">
-              Registered Student Stores ({stores.length})
-            </h2>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {stores.length === 0 ? (
-            <div className="col-span-full py-12 text-center text-muted text-sm">
-              No student storefronts registered yet.
-            </div>
-          ) : (
-            stores.map((store) => (
-              <div
+      <Panel heading={`Store directory (${stores.length})`} flush>
+        {stores.length === 0 ? (
+          <EmptyState
+            icon={Store}
+            title="No storefronts yet"
+            body="Once you approve a student's seller verification, their storefront appears here with its pickup details, catalog size, and buyer rating."
+          />
+        ) : (
+          <ul className="divide-y divide-line">
+            {stores.map((store) => (
+              <li
                 key={store.id}
-                className="flex flex-col justify-between gap-4 rounded-2xl border border-line bg-paper/50 p-5 shadow-sm hover:shadow-flyer transition-shadow"
+                className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-paper/60 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
               >
-                <div className="flex flex-col gap-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex flex-col">
-                      <h3 className="font-display font-bold text-base text-ink">
-                        {store.name}
-                      </h3>
-                      <span className="text-xs text-muted">
-                        Seller: {store.sellerName} ({store.sellerEmail})
-                      </span>
-                    </div>
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        store.is_active
-                          ? "bg-kita-green-soft text-kita-green"
-                          : "bg-destructive/10 text-destructive"
-                      }`}
-                    >
-                      {store.is_active ? "Active" : "Suspended"}
-                    </span>
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                    <h3 className="text-sm font-semibold text-ink">{store.name}</h3>
+                    <StatusPill intent={store.is_active ? "live" : "stopped"}>
+                      {store.is_active ? "Open" : "Paused"}
+                    </StatusPill>
                   </div>
 
+                  <p className="text-xs text-muted">
+                    {store.sellerName}
+                    {store.sellerEmail && (
+                      <>
+                        {" · "}
+                        <span className="tabular">{store.sellerEmail}</span>
+                      </>
+                    )}
+                  </p>
+
                   {store.description && (
-                    <p className="text-xs text-muted line-clamp-2">
+                    <p className="line-clamp-2 max-w-[64ch] text-sm leading-relaxed text-muted">
                       {store.description}
                     </p>
                   )}
 
-                  <div className="flex flex-col gap-1 text-[11px] text-muted pt-2 border-t border-line/60">
-                    {store.pickup_locations && (
-                      <span className="flex items-center gap-1.5 truncate">
-                        <MapPin className="h-3.5 w-3.5 text-kita-green flex-shrink-0" />
-                        <span className="truncate">{store.pickup_locations}</span>
-                      </span>
-                    )}
-                    {store.operating_hours && (
-                      <span className="flex items-center gap-1.5 truncate">
-                        <Clock className="h-3.5 w-3.5 text-muted flex-shrink-0" />
-                        <span className="truncate">{store.operating_hours}</span>
-                      </span>
-                    )}
+                  {(store.pickup_locations || store.operating_hours) && (
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-muted">
+                      {store.pickup_locations && (
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <MapPin
+                            className="h-3.5 w-3.5 flex-shrink-0 text-muted"
+                            strokeWidth={1.75}
+                            aria-hidden="true"
+                          />
+                          <span className="truncate">{store.pickup_locations}</span>
+                        </span>
+                      )}
+                      {store.operating_hours && (
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <Clock
+                            className="h-3.5 w-3.5 flex-shrink-0 text-muted"
+                            strokeWidth={1.75}
+                            aria-hidden="true"
+                          />
+                          <span className="truncate">{store.operating_hours}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <dl className="flex flex-shrink-0 items-start gap-6 sm:gap-8">
+                  <div className="flex flex-col gap-0.5">
+                    <dt className="text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-muted">
+                      Live
+                    </dt>
+                    <dd className="tabular text-sm font-bold text-ink">
+                      {store.activeProducts}
+                      <span className="font-normal text-muted"> / {store.totalProducts}</span>
+                    </dd>
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between pt-3 border-t border-line text-xs font-semibold">
-                  <span className="flex items-center gap-1 text-ink">
-                    <Package className="h-3.5 w-3.5 text-muted" />
-                    <span>{store.activeProducts} live items</span>
-                  </span>
-
-                  <span className="flex items-center gap-1 text-spark-ink">
-                    <Star className="h-3.5 w-3.5 fill-spark text-spark" />
-                    <span>{store.rating_avg.toFixed(1)}</span>
-                  </span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+                  <div className="flex flex-col gap-0.5">
+                    <dt className="text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-muted">
+                      Rating
+                    </dt>
+                    <dd className="flex items-center gap-1.5">
+                      {store.rating_count > 0 ? (
+                        <>
+                          <Star
+                            className="h-3.5 w-3.5 fill-spark text-spark"
+                            strokeWidth={1.75}
+                            aria-hidden="true"
+                          />
+                          <span className="tabular text-sm font-bold text-ink">
+                            {store.rating_avg.toFixed(1)}
+                          </span>
+                          <span className="tabular text-xs text-muted">
+                            ({store.rating_count})
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-sm text-muted">No reviews</span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Panel>
     </main>
   );
 }

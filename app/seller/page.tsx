@@ -1,15 +1,14 @@
 import React from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "@/lib/auth/session";
 import { ensureSellerStoreAction } from "@/app/actions/seller";
-import { SellerStudioView } from "@/components/seller/seller-studio-view";
-import { MOCK_CATEGORIES } from "@/lib/mock-data";
-
+import { SellerStudioView, SellerOrder } from "@/components/seller/seller-studio-view";
 export const metadata: Metadata = {
   title: "Seller Studio Dashboard — Project Kita",
-  description: "Manage your campus store catalog, products, and inventory.",
+  description: "Manage your campus store catalog, incoming student orders, and inventory.",
 };
 
 export default async function SellerStudioPage() {
@@ -32,19 +31,20 @@ export default async function SellerStudioPage() {
 
   if (!store) {
     return (
-      <main className="mx-auto max-w-4xl px-4 py-16 text-center">
-        <div className="rounded-3xl border border-line bg-surface p-8 shadow-flyer flex flex-col items-center gap-4">
-          <h1 className="font-display text-2xl font-bold text-ink">
-            Unable to Load Seller Storefront
+      <main className="mx-auto max-w-lg px-4 py-16">
+        <div className="flex flex-col items-start gap-3 rounded-lg border border-line bg-surface p-6">
+          <h1 className="text-base font-semibold text-ink">
+            We couldn&rsquo;t open your storefront
           </h1>
-          <p className="text-sm text-muted">
-            {storeError || "Something went wrong while initializing your store."}
+          <p className="text-sm leading-relaxed text-muted">
+            {storeError ||
+              "Something went wrong while setting up your store. Nothing has been lost — try again in a moment."}
           </p>
           <a
             href="/seller"
-            className="rounded-xl bg-kita-green px-5 py-2.5 text-sm font-semibold text-white shadow-flyer"
+            className="inline-flex h-9 items-center rounded-md bg-kita-green px-3.5 text-sm font-semibold text-white transition-colors hover:bg-kita-green-deep"
           >
-            Retry Loading
+            Try again
           </a>
         </div>
       </main>
@@ -59,15 +59,7 @@ export default async function SellerStudioPage() {
     .select("id, name, slug, icon")
     .order("name");
 
-  const categories =
-    dbCategories && dbCategories.length > 0
-      ? dbCategories
-      : MOCK_CATEGORIES.map((c) => ({
-          id: c.id,
-          name: c.name,
-          slug: c.slug,
-          icon: c.icon,
-        }));
+  const categories = dbCategories || [];
 
   // 3. Fetch seller's products
   const { data: dbProducts } = await supabase
@@ -109,6 +101,81 @@ export default async function SellerStudioPage() {
     ),
   }));
 
+  // 4. Fetch incoming store orders
+  const { data: dbOrders } = await supabase
+    .from("orders")
+    .select(`
+      id,
+      order_number,
+      total_amount,
+      status,
+      created_at,
+      buyer:profiles!orders_buyer_id_fkey (id, full_name),
+      items:order_items (id, title, quantity, price, subtotal),
+      fulfillment:fulfillments (location_details, preferred_time, notes),
+      payment:payments (payment_method, reference_number, status)
+    `)
+    .eq("store_id", store.id)
+    .order("created_at", { ascending: false });
+
+  let orders: SellerOrder[] = (dbOrders || []).map((o) => {
+    const buyer = Array.isArray(o.buyer) ? o.buyer[0] : o.buyer;
+    const fulfillment = Array.isArray(o.fulfillment) ? o.fulfillment[0] : o.fulfillment;
+    const payment = Array.isArray(o.payment) ? o.payment[0] : o.payment;
+    const rawItems = Array.isArray(o.items) ? o.items : [];
+
+    return {
+      id: o.id,
+      order_number: o.order_number,
+      buyer_name: buyer?.full_name || "Student Customer",
+      total_amount: Number(o.total_amount || 0),
+      status: o.status,
+      created_at: o.created_at,
+      pickup_location: fulfillment?.location_details || store.pickup_locations || "Campus Handoff Area",
+      notes: fulfillment?.notes || null,
+      payment_method: payment?.payment_method || "CASH_ON_PICKUP",
+      items: rawItems.map((i) => ({
+        id: i.id,
+        title: i.title,
+        quantity: i.quantity,
+        price: Number(i.price),
+        subtotal: Number(i.subtotal || i.price * i.quantity),
+      })),
+    };
+  });
+
+  // Read session cookie orders (filtered strictly for this store)
+  try {
+    const cookieStore = await cookies();
+    const cookiePlaced = cookieStore.get("projectkita_placed_orders")?.value;
+    if (cookiePlaced) {
+      const parsedOrders = JSON.parse(cookiePlaced);
+      parsedOrders.forEach((co: any) => {
+        const isForThisStore =
+          (store?.id && co.store_id === store.id) ||
+          (store?.name && co.storeName === store.name) ||
+          (!co.store_id && !store?.id);
+
+        if (isForThisStore && !orders.some((o) => o.order_number === co.order_number)) {
+          orders.unshift({
+            id: co.id || co.order_number,
+            order_number: co.order_number,
+            buyer_name: co.buyer_name || "Student Customer",
+            total_amount: Number(co.total_amount || 0),
+            status: co.status || "PREPARING",
+            created_at: co.created_at || new Date().toISOString(),
+            pickup_location: co.pickupLocation || store.pickup_locations || "Main Canteen Handoff",
+            notes: co.notes || null,
+            payment_method: co.paymentMethod || "CASH_ON_PICKUP",
+            items: co.items || [],
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("Cookie order read error:", err);
+  }
+
   return (
     <main>
       <SellerStudioView
@@ -129,6 +196,7 @@ export default async function SellerStudioPage() {
         }}
         categories={categories}
         products={products}
+        orders={orders}
       />
     </main>
   );

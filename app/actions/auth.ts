@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
@@ -97,13 +98,13 @@ export async function signupAction(
   // 2. Hash password securely
   const passwordHash = await hashPassword(password);
 
-  // 3. Insert profile into database
+  // 3. Insert profile into database (All student accounts start as BUYER until verified by campus admin)
   const { data: newProfile, error: insertError } = await supabase
     .from("profiles")
     .insert({
       email: email.toLowerCase().trim(),
       full_name: name.trim(),
-      role: accountType === "seller" ? "SELLER" : "BUYER",
+      role: "BUYER",
       password_hash: passwordHash,
     })
     .select("id, email, full_name, role")
@@ -135,7 +136,11 @@ export async function signupAction(
     role: newProfile.role,
   });
 
-  // 7. Direct redirect into the app
+  // 7. Direct redirect: if aspiring seller, take to verification portal
+  if (accountType === "seller") {
+    redirect("/seller/verification");
+  }
+
   redirect("/protected");
 }
 
@@ -365,4 +370,67 @@ export async function resetPasswordAction(
   }
 
   redirect("/protected");
+}
+
+/**
+ * Permanently deletes the user's account and all associated records.
+ * Clears session cookie and redirects to /login.
+ */
+export async function deleteAccountAction(): Promise<never> {
+  const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
+
+  const supabase = await createClient();
+
+  // 1. If seller, delete products and store
+  const { data: store } = await supabase
+    .from("stores")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (store) {
+    const { data: products } = await supabase
+      .from("products")
+      .select("id")
+      .eq("store_id", store.id);
+
+    if (products && products.length > 0) {
+      const productIds = products.map((p) => p.id);
+      await supabase.from("product_images").delete().in("product_id", productIds);
+      await supabase.from("products").delete().eq("store_id", store.id);
+    }
+    await supabase.from("stores").delete().eq("id", store.id);
+  }
+
+  // 2. Delete carts & cart items
+  const { data: cart } = await supabase
+    .from("carts")
+    .select("id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (cart) {
+    await supabase.from("cart_items").delete().eq("cart_id", cart.id);
+    await supabase.from("carts").delete().eq("id", cart.id);
+  }
+
+  // 3. Delete student verifications
+  await supabase.from("student_verifications").delete().eq("user_id", user.id);
+
+  // 4. Delete reviews, notifications & reports
+  await supabase.from("reviews").delete().eq("user_id", user.id);
+  await supabase.from("notifications").delete().eq("user_id", user.id);
+  await supabase.from("reports").delete().eq("reporter_id", user.id);
+
+  // 5. Delete profile record
+  await supabase.from("profiles").delete().eq("id", user.id);
+
+  // 6. Clear session cookie
+  await clearSessionCookie();
+
+  revalidatePath("/", "layout");
+  redirect("/login");
 }

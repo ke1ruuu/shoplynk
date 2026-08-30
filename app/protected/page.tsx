@@ -1,31 +1,19 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import {
-  LayoutGrid,
-  Store,
-  Sparkles,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  MapPin,
-  ShoppingBag,
-} from "lucide-react";
+import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "@/lib/auth/session";
 import { ProtectedLayout } from "@/components/shell/protected-layout";
+import {
+  BuyerDashboardView,
+  type BuyerOrder,
+} from "@/components/dashboard/buyer-dashboard-view";
+import { ProductItem } from "@/components/marketplace/product-card";
 
 export const metadata: Metadata = {
-  title: "Dashboard Home — Project Kita",
-  description: "Authenticated member dashboard for campus community.",
+  title: "Shop Campus Marketplace — Project Kita",
+  description: "Browse trending student products, homemade treats, and school merchandise at LYFJSHS.",
 };
-
-const SEEDED_CATEGORIES = [
-  { name: "Food & Drinks", icon: "🍱", slug: "food-and-drinks" },
-  { name: "Handmade Crafts", icon: "🎨", slug: "handmade-crafts" },
-  { name: "Student Merchandise", icon: "👕", slug: "student-merchandise" },
-  { name: "School & Stationery", icon: "📚", slug: "school-and-stationery" },
-  { name: "Lifestyle Goods", icon: "✨", slug: "lifestyle-goods" },
-];
 
 export default async function ProtectedDashboardHomePage() {
   const { user, profile } = await getCurrentUserProfile();
@@ -39,162 +27,169 @@ export default async function ProtectedDashboardHomePage() {
     redirect("/admin");
   }
 
-  const displayName =
-    profile?.full_name || user.user_metadata?.full_name || "Member";
-  const schoolName = "Luis Y. Ferrer Jr. Senior High School";
+  const supabase = await createClient();
+
+  // 1. Fetch user orders from database
+  const { data: dbOrders } = await supabase
+    .from("orders")
+    .select(
+      `
+      id,
+      order_number,
+      total_amount,
+      status,
+      created_at,
+      store:stores (name, pickup_locations),
+      items:order_items (id, title, quantity, price),
+      fulfillment:fulfillments (location_details, preferred_time)
+    `
+    )
+    .eq("buyer_id", user.id)
+    .order("created_at", { ascending: false });
+
+  let orders: BuyerOrder[] = (dbOrders || []).map((o) => {
+    const store = Array.isArray(o.store) ? o.store[0] : o.store;
+    const fulfillment = Array.isArray(o.fulfillment) ? o.fulfillment[0] : o.fulfillment;
+    const rawItems = Array.isArray(o.items) ? o.items : [];
+
+    return {
+      id: o.id,
+      order_number: o.order_number,
+      total_amount: Number(o.total_amount || 0),
+      status: o.status,
+      created_at: o.created_at,
+      storeName: store?.name || "Campus Store",
+      pickupLocation: fulfillment?.location_details || store?.pickup_locations || null,
+      items: rawItems.map((item) => ({
+        id: item.id,
+        title: item.title,
+        quantity: item.quantity,
+        price: Number(item.price),
+      })),
+    };
+  });
+
+  // 2. Read placed orders from session cookies (strictly for current buyer)
+  try {
+    const cookieStore = await cookies();
+    const cookiePlaced = cookieStore.get("projectkita_placed_orders")?.value;
+    if (cookiePlaced) {
+      const parsedOrders = JSON.parse(cookiePlaced);
+      parsedOrders.forEach((co: any) => {
+        const isMyOrder = co.buyer_id === user.id;
+
+        if (isMyOrder && !orders.some((o) => o.order_number === co.order_number)) {
+          orders.unshift({
+            id: co.id || co.order_number,
+            order_number: co.order_number,
+            total_amount: Number(co.total_amount || 0),
+            status: co.status || "PREPARING",
+            created_at: co.created_at || new Date().toISOString(),
+            storeName: co.storeName || "Campus Store",
+            pickupLocation: co.pickupLocation || "Main Canteen Handoff Area",
+            items: co.items || [],
+          });
+        }
+      });
+    }
+  } catch (err) {
+    console.warn("Error reading cookie orders:", err);
+  }
+
+  // 3. Fetch categories
+  const { data: dbCategories } = await supabase
+    .from("categories")
+    .select("name, slug")
+    .order("name");
+
+  const categories = [
+    { name: "All Items", slug: "all" },
+    ...(dbCategories || []),
+  ];
+
+  // 4. Fetch active products
+  const { data: dbProducts } = await supabase
+    .from("products")
+    .select(
+      `
+      id,
+      title,
+      slug,
+      description,
+      price,
+      stock,
+      status,
+      prep_time_minutes,
+      category:categories (name, slug),
+      store:stores (
+        id,
+        name,
+        slug,
+        logo_url,
+        pickup_locations,
+        rating_avg,
+        rating_count,
+        owner:profiles (full_name, role)
+      ),
+      images:product_images (image_url, display_order)
+    `
+    )
+    .eq("status", "ACTIVE")
+    .order("created_at", { ascending: false })
+    .limit(24);
+
+  let products: ProductItem[] = (dbProducts || []).map((p) => {
+    const rawCategory = Array.isArray(p.category) ? p.category[0] : p.category;
+    const rawStore = Array.isArray(p.store) ? p.store[0] : p.store;
+    const rawImages = Array.isArray(p.images) ? p.images : [];
+
+    return {
+      id: p.id,
+      title: p.title,
+      slug: p.slug,
+      description: p.description,
+      price: Number(p.price),
+      stock: p.stock,
+      status: p.status as ProductItem["status"],
+      prep_time_minutes: p.prep_time_minutes,
+      category: {
+        name: rawCategory?.name || "General",
+        slug: rawCategory?.slug || "all",
+      },
+      store: {
+        id: rawStore?.id || "",
+        name: rawStore?.name || "Campus Store",
+        slug: rawStore?.slug || "",
+        logo_url: rawStore?.logo_url || null,
+        pickup_locations: rawStore?.pickup_locations || null,
+        rating_avg: Number(rawStore?.rating_avg || 0),
+        rating_count: Number(rawStore?.rating_count || 0),
+        owner: rawStore?.owner
+          ? Array.isArray(rawStore.owner)
+            ? rawStore.owner[0]
+            : rawStore.owner
+          : undefined,
+      },
+      images: rawImages
+        .map((img) => ({
+          image_url: img.image_url,
+          display_order: img.display_order,
+        }))
+        .sort((a, b) => a.display_order - b.display_order),
+    };
+  });
 
   return (
     <ProtectedLayout user={user} profile={profile}>
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 flex flex-col gap-8">
-        {/* Welcome Banner */}
-        <section className="relative overflow-hidden rounded-2xl border border-kita-green/20 bg-kita-green p-6 sm:p-10 text-white shadow-flyer-lg">
-          <div
-            className="pointer-events-none absolute inset-0 opacity-15"
-            style={{
-              backgroundImage:
-                "radial-gradient(rgba(255,255,255,0.9) 1px, transparent 1.4px)",
-              backgroundSize: "22px 22px",
-            }}
-          />
-          <div className="relative z-10 flex flex-col items-start gap-4 max-w-2xl">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold text-spark backdrop-blur-sm">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Authenticated Shell Active
-            </span>
-            <h1 className="font-display text-3xl sm:text-4xl font-extrabold leading-tight">
-              Welcome back, <span className="text-spark">{displayName}</span>!
-            </h1>
-            <p className="text-base text-white/85 leading-relaxed">
-              You are signed into the private campus marketplace for{" "}
-              <span className="font-semibold text-white">{schoolName}</span>.
-            </p>
-          </div>
-        </section>
-
-        {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Marketplace Navigation Card */}
-          <div className="flex flex-col justify-between gap-6 rounded-2xl border border-line bg-surface p-6 sm:p-8 shadow-flyer">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="eyebrow text-kita-green flex items-center gap-1.5">
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  Campus Commerce
-                </span>
-                <span className="rounded-full bg-kita-green-soft px-2.5 py-0.5 text-xs font-bold text-kita-green">
-                  Live Beta
-                </span>
-              </div>
-              <h2 className="font-display text-2xl font-extrabold text-ink">
-                Explore Marketplace
-              </h2>
-              <p className="text-sm text-muted leading-relaxed">
-                Discover live products, snacks, review notes, and services from verified student entrepreneurs across campus.
-              </p>
-            </div>
-
-            <Link
-              href="/protected/marketplace"
-              className="group inline-flex items-center justify-center gap-2 rounded-xl bg-kita-green px-6 py-3.5 text-base font-semibold text-white shadow-flyer transition-all hover:bg-kita-green-deep"
-            >
-              <ShoppingBag className="h-5 w-5" />
-              <span>Enter Marketplace</span>
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </div>
-
-          {/* Seller Verification Nudge Card */}
-          <div className="flex flex-col justify-between gap-6 rounded-2xl border border-spark/40 bg-spark-soft/30 p-6 sm:p-8 shadow-flyer">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="eyebrow text-spark-ink flex items-center gap-1.5">
-                  <Store className="h-3.5 w-3.5" />
-                  {profile?.role === "SELLER" ? "Verified Seller" : "Student Entrepreneur"}
-                </span>
-                <Sparkles className="h-4 w-4 text-spark-ink" />
-              </div>
-              <h2 className="font-display text-2xl font-extrabold text-ink">
-                {profile?.role === "SELLER"
-                  ? "Seller Studio & Inventory"
-                  : "Start Selling on Campus"}
-              </h2>
-              <p className="text-sm text-muted leading-relaxed">
-                {profile?.role === "SELLER"
-                  ? "Manage your campus store catalog, add new products, adjust inventory, and fulfill student orders."
-                  : "Submit your student ID verification to unlock storefront creation, catalog management, and order fulfillment."}
-              </p>
-            </div>
-
-            <Link
-              href={
-                profile?.role === "SELLER" ||
-                profile?.role === "CAMPUS_ADMIN" ||
-                profile?.role === "PLATFORM_ADMIN"
-                  ? "/seller"
-                  : "/seller/verification"
-              }
-              className="group inline-flex items-center justify-center gap-2 rounded-xl bg-kita-green px-6 py-3.5 text-base font-semibold text-white shadow-flyer transition-all hover:bg-kita-green-deep"
-            >
-              <span>
-                {profile?.role === "SELLER"
-                  ? "Open Seller Studio"
-                  : "Get Verified to Sell"}
-              </span>
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Campus Categories Shortcuts */}
-        <section className="flex flex-col gap-4 border-t border-line pt-8">
-          <header className="flex items-center justify-between">
-            <div className="flex flex-col gap-1">
-              <h2 className="font-display text-2xl font-extrabold text-ink">
-                Marketplace Categories
-              </h2>
-              <p className="text-xs text-muted">
-                Seeded categories for student and faculty listings
-              </p>
-            </div>
-            <Link
-              href="/protected/marketplace"
-              className="text-sm font-semibold text-kita-green hover:underline"
-            >
-              View all
-            </Link>
-          </header>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {SEEDED_CATEGORIES.map(({ name, icon, slug }) => (
-              <Link
-                key={slug}
-                href={`/protected/marketplace/category/${slug}`}
-                className="group flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 shadow-flyer transition-all hover:border-kita-green/40 hover:-translate-y-1"
-              >
-                <span className="text-3xl transition-transform group-hover:scale-110">{icon}</span>
-                <span className="font-display font-bold text-sm text-ink leading-tight group-hover:text-kita-green transition-colors">
-                  {name}
-                </span>
-                <span className="text-xs text-muted flex items-center gap-1">
-                  <span>Browse</span>
-                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-
-        {/* Security & Access Footer Notice */}
-        <div className="flex items-center justify-between rounded-xl bg-surface border border-line p-4 text-xs text-muted">
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="h-4 w-4 text-kita-green flex-shrink-0" />
-            <span>Campus-gated authentication &amp; Row-Level Security active</span>
-          </div>
-          <div className="flex items-center gap-1 text-ink font-semibold">
-            <MapPin className="h-3.5 w-3.5 text-kita-green" />
-            <span>{schoolName}</span>
-          </div>
-        </div>
+      <main>
+        <BuyerDashboardView
+          displayName={profile?.full_name || user.user_metadata?.full_name || "Member"}
+          campusName="Luis Y. Ferrer Jr. Senior High School"
+          isSeller={profile?.role === "SELLER"}
+          orders={orders}
+          categories={categories}
+          products={products}
+        />
       </main>
     </ProtectedLayout>
   );
