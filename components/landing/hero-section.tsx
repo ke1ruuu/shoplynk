@@ -116,17 +116,20 @@ export function HeroSection() {
               opacity: opacityFade,
             }}
           >
-            <div className="rise inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-surface border border-line shadow-flyer">
-              <span className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-paper border border-line flex items-center justify-center">
+            <div className="rise inline-flex items-center gap-3 pl-2 pr-5 py-2 rounded-full bg-surface border border-line shadow-flyer">
+              <span className="w-9 h-9 sm:w-10 sm:h-10 rounded-full overflow-hidden flex-shrink-0 flex items-center justify-center">
                 <Image
-                  src="/LYNKICON.png"
-                  alt="LYNK Icon"
-                  width={28}
-                  height={28}
+                  src="/lyfjshs-logo.png"
+                  alt="LYFJSHS Logo"
+                  width={40}
+                  height={40}
                   className="object-contain w-full h-full"
+                  priority
                 />
               </span>
-              <span className="eyebrow text-kita-green">Exclusively for LYFJSHS</span>
+              <span className="eyebrow text-xs sm:text-sm font-bold text-kita-green tracking-wide">
+                Exclusively for LYFJSHS
+              </span>
             </div>
 
             <h1

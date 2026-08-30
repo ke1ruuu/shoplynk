@@ -12,21 +12,24 @@ interface LogoProps {
 
 export function Logo({
   size = "md",
+  tone = "light",
   className = "",
   href = "/",
 }: LogoProps) {
-  // Standard, prominent logo sizing: sm = 36px, md = 46px, lg = 58px
+  // Prominent, generous logo sizing: sm = 42px, md = 56px, lg = 72px
   const sizeClasses = {
-    sm: "h-9 w-auto",
-    md: "h-11 sm:h-12 w-auto",
-    lg: "h-14 sm:h-16 w-auto",
+    sm: "h-10 sm:h-11 w-auto",
+    md: "h-13 sm:h-15 w-auto",
+    lg: "h-16 sm:h-20 w-auto",
   };
 
   const imageDimensions = {
-    sm: { width: 50, height: 36 },
-    md: { width: 66, height: 48 },
-    lg: { width: 88, height: 64 },
+    sm: { width: 62, height: 44 },
+    md: { width: 84, height: 60 },
+    lg: { width: 112, height: 80 },
   };
+
+  const logoSrc = tone === "dark" ? "/WHITE.png" : "/LYNKICON.png";
 
   return (
     <Link
@@ -36,7 +39,7 @@ export function Logo({
     >
       <div className={`relative flex items-center justify-center ${sizeClasses[size]}`}>
         <Image
-          src="/LYNKICON.png"
+          src={logoSrc}
           alt="LYNK Logo"
           width={imageDimensions[size].width}
           height={imageDimensions[size].height}
