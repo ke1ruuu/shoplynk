@@ -178,19 +178,22 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
           <div className="flex flex-col gap-5">
             {/* Store & Seller Badge Header */}
             <div className="flex items-center justify-between border-b border-line pb-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-kita-green text-sm font-extrabold text-white shadow-sm">
+              <Link
+                href={`/protected/marketplace/store/${product.store?.slug || product.store?.id}`}
+                className="flex items-center gap-3 group hover:opacity-80 transition-opacity"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-kita-green text-sm font-extrabold text-white shadow-sm flex-shrink-0">
                   {product.store?.name?.substring(0, 2).toUpperCase() || "ST"}
                 </div>
                 <div className="flex flex-col truncate">
-                  <span className="font-display font-bold text-sm text-ink leading-tight truncate">
+                  <span className="font-display font-bold text-sm text-ink leading-tight truncate group-hover:text-kita-green transition-colors">
                     {product.store?.name}
                   </span>
                   <span className="text-xs text-muted">
                     {product.store?.owner?.full_name || "Verified Student Seller"}
                   </span>
                 </div>
-              </div>
+              </Link>
               <div className="flex items-center gap-1 rounded-full bg-kita-green-soft px-2.5 py-0.5 text-xs font-bold text-kita-green">
                 <CheckCircle2 className="h-3.5 w-3.5" />
                 <span>Verified</span>

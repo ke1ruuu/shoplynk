@@ -120,9 +120,12 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
         <div className="flex flex-col gap-1">
           {/* Store & Verified Indicator */}
           <div className="flex items-center justify-between text-xs text-muted">
-            <span className="font-semibold truncate text-muted hover:text-ink transition-colors">
+            <Link
+              href={`/protected/marketplace/store/${product.store?.slug || product.store?.id}`}
+              className="font-semibold truncate text-muted hover:text-kita-green transition-colors"
+            >
               {product.store?.name}
-            </span>
+            </Link>
             <div className="flex items-center gap-1 text-kita-green font-bold flex-shrink-0">
               <CheckCircle2 className="h-3 w-3" />
               <span className="text-xs">Verified</span>

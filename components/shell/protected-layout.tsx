@@ -52,10 +52,13 @@ function Workspace({
 export function ProtectedLayout({ user, profile, children }: ProtectedLayoutProps) {
   const pathname = usePathname();
 
-  // Full-page focused creation/editing views where the sidebar should be hidden
+  // Full-page focused creation/editing/settings/storefront views where the sidebar should be hidden
   const isFullPage =
     pathname.startsWith("/seller/products/") ||
-    pathname === "/seller/verification";
+    pathname === "/seller/verification" ||
+    pathname.startsWith("/seller/settings") ||
+    pathname.startsWith("/protected/marketplace/store/") ||
+    pathname.startsWith("/protected/store/");
 
   return (
     <FavoritesProvider>

@@ -54,7 +54,8 @@ interface AppSidebarProps {
 export function AppSidebar({ user, profile }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } = useSidebar();
+  const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } =
+    useSidebar();
   const [isPending, startTransition] = useTransition();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
@@ -80,9 +81,14 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
   const isMarketplaceActive = pathname.startsWith("/protected/marketplace");
   const isOrdersActive = pathname.startsWith("/protected/orders");
   const isFavoritesActive = pathname.startsWith("/protected/favorites");
-  const isSellerActive = pathname === "/seller" || pathname.startsWith("/seller/products");
+  const isSellerActive =
+    pathname === "/seller" ||
+    (pathname.startsWith("/seller/products") &&
+      !pathname.startsWith("/seller/settings"));
   const isSellerOrdersActive = pathname.startsWith("/seller/orders");
-  const isVerificationsActive = pathname === "/admin" || pathname === "/admin/verifications";
+  const isSellerSettingsActive = pathname.startsWith("/seller/settings");
+  const isVerificationsActive =
+    pathname === "/admin" || pathname === "/admin/verifications";
   const isStoresActive = pathname.startsWith("/admin/stores");
   const isAnalyticsActive = pathname.startsWith("/admin/analytics");
 
@@ -128,11 +134,15 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
       {/* Sidebar Container */}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-line bg-surface transition-all duration-300 ease-out ${
-          mobileOpen ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0"
+          mobileOpen
+            ? "translate-x-0 w-72"
+            : "-translate-x-full lg:translate-x-0"
         } ${isCollapsedView ? "lg:w-20" : "lg:w-64"}`}
       >
         {/* Top Header */}
-        <div className={`flex flex-col border-b border-line ${isCollapsedView ? "p-3 items-center" : "p-4 gap-3"}`}>
+        <div
+          className={`flex flex-col border-b border-line ${isCollapsedView ? "p-3 items-center" : "p-4 gap-3"}`}
+        >
           {isCollapsedView ? (
             /* Collapsed Header: LYNK Logo linking to /protected + expand button */
             <div className="flex flex-col items-center gap-2">
@@ -202,7 +212,9 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
         </div>
 
         {/* Navigation Items */}
-        <div className={`flex-1 overflow-y-auto ${isCollapsedView ? "p-2" : "p-3"} flex flex-col justify-between`}>
+        <div
+          className={`flex-1 overflow-y-auto ${isCollapsedView ? "p-2" : "p-3"} flex flex-col justify-between`}
+        >
           <nav className="flex flex-col gap-1.5">
             {isAdmin ? (
               /* Admin Navigation */
@@ -221,7 +233,9 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                   }`}
                   title="Seller Verifications"
                 >
-                  <Shield className={`h-5 w-5 flex-shrink-0 ${isVerificationsActive ? "text-white" : "text-spark-ink"} transition-transform group-hover:scale-105`} />
+                  <Shield
+                    className={`h-5 w-5 flex-shrink-0 ${isVerificationsActive ? "text-white" : "text-spark-ink"} transition-transform group-hover:scale-105`}
+                  />
                   {!isCollapsedView && <span>Seller Verifications</span>}
                 </Link>
 
@@ -353,7 +367,9 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                 <div className="flex flex-col gap-1 border-t border-line pt-3 mt-2">
                   {!isCollapsedView && (
                     <span className="eyebrow px-3.5 pt-1 text-xs text-muted">
-                      {role === "SELLER" ? "Seller Studio" : "Student Entrepreneur"}
+                      {role === "SELLER"
+                        ? "Seller Studio"
+                        : "Student Entrepreneur"}
                     </span>
                   )}
 
@@ -374,8 +390,10 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                         }`}
                         title="Seller Studio"
                       >
-                        <Store className={`h-5 w-5 flex-shrink-0 ${isSellerActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`} />
-                        {!isCollapsedView && <span>Store Catalog</span>}
+                        <Store
+                          className={`h-5 w-5 flex-shrink-0 ${isSellerActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`}
+                        />
+                        {!isCollapsedView && <span>Catalog</span>}
                       </Link>
 
                       {/* Store Orders Management */}
@@ -393,8 +411,31 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                         }`}
                         title="Store Orders"
                       >
-                        <Clock className={`h-5 w-5 flex-shrink-0 ${isSellerOrdersActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`} />
-                        {!isCollapsedView && <span>Store Orders</span>}
+                        <Clock
+                          className={`h-5 w-5 flex-shrink-0 ${isSellerOrdersActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`}
+                        />
+                        {!isCollapsedView && <span>Orders</span>}
+                      </Link>
+
+                      {/* Store Settings */}
+                      <Link
+                        href="/seller/settings"
+                        onClick={() => setMobileOpen(false)}
+                        className={`group flex items-center rounded-xl transition-all ${
+                          isCollapsedView
+                            ? "h-11 w-11 mx-auto justify-center"
+                            : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                        } ${
+                          isSellerSettingsActive
+                            ? "bg-kita-green text-white shadow-flyer"
+                            : "text-muted hover:bg-paper hover:text-ink"
+                        }`}
+                        title="Store Settings"
+                      >
+                        <Settings
+                          className={`h-5 w-5 flex-shrink-0 ${isSellerSettingsActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`}
+                        />
+                        {!isCollapsedView && <span>Settings</span>}
                       </Link>
                     </>
                   ) : (
@@ -426,7 +467,9 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
         </div>
 
         {/* User Profile Menubar Dropdown Footer */}
-        <div className={`border-t border-line bg-paper/50 ${isCollapsedView ? "p-2 flex justify-center" : "p-3"}`}>
+        <div
+          className={`border-t border-line bg-paper/50 ${isCollapsedView ? "p-2 flex justify-center" : "p-3"}`}
+        >
           <DropdownMenu>
             <DropdownMenuTrigger
               className={`w-full rounded-2xl transition-all outline-none focus-visible:ring-2 focus-visible:ring-kita-green ${
@@ -470,7 +513,11 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                   <p className="text-xs text-muted truncate">{email}</p>
                   <span className="mt-1 inline-flex w-fit items-center gap-1 rounded-md bg-kita-green-soft px-2 py-0.5 text-xs font-bold text-kita-green">
                     <ShieldCheck className="h-3 w-3" />
-                    {role === "SELLER" ? "Verified Seller" : role === "CAMPUS_ADMIN" ? "Administrator" : "Student Member"}
+                    {role === "SELLER"
+                      ? "Verified Seller"
+                      : role === "CAMPUS_ADMIN"
+                        ? "Administrator"
+                        : "Student Member"}
                   </span>
                 </div>
               </DropdownMenuLabel>

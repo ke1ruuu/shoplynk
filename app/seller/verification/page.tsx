@@ -39,7 +39,7 @@ export default async function SellerVerificationPage() {
     .maybeSingle();
 
   return (
-    <main className="w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div className="w-full min-h-screen bg-paper text-ink">
       <VerificationPortalView
         initialVerification={
           verification
@@ -58,6 +58,6 @@ export default async function SellerVerificationPage() {
         userFullName={profile?.full_name || user.full_name}
         userEmail={user.email}
       />
-    </main>
+    </div>
   );
 }

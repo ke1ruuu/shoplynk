@@ -20,7 +20,6 @@ import { StatusPill, orderStatus } from "@/components/dashboard/status-pill";
 import { ProductTable, SellerProductItem } from "./product-table";
 import { CategoryOption } from "./product-editor-view";
 import { DeleteProductDialog } from "./delete-product-dialog";
-import { StoreSettingsModal } from "./store-settings-modal";
 import { peso } from "@/lib/format";
 import { updateOrderStatusAction } from "@/app/actions/orders";
 
@@ -80,7 +79,6 @@ export function SellerStudioView({
   orders = [],
 }: SellerStudioViewProps) {
   const [activeTab, setActiveTab] = useState<"orders" | "products">("orders");
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<{
     id: string;
@@ -132,14 +130,13 @@ export function SellerStudioView({
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
+          <Link
+            href="/seller/settings"
             className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 text-xs font-bold text-ink hover:bg-paper-deep transition-colors"
           >
             <Settings className="h-3.5 w-3.5 text-muted" />
             <span>Store Settings</span>
-          </button>
+          </Link>
 
           <Link
             href="/seller/products/new"
@@ -426,13 +423,6 @@ export function SellerStudioView({
           )}
         </main>
       </div>
-
-      {/* Store Settings Modal */}
-      <StoreSettingsModal
-        store={store}
-        open={settingsOpen}
-        onOpenChange={setSettingsOpen}
-      />
 
       {/* Delete Product Confirmation Dialog */}
       <DeleteProductDialog
