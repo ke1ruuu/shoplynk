@@ -70,8 +70,7 @@ export function AuthBrandPanel() {
         <div className="relative -rotate-1 max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-flyer-lg">
           <span className="pin left-8 -top-1.5" aria-hidden="true" />
           <p className="text-[15px] leading-relaxed text-ink">
-            &ldquo;I sold out my first batch of cookies in one lunch break. Project
-            Kita made it feel real.&rdquo;
+            &ldquo;I sold out my first batch of cookies in one lunch break. LYNK made it feel real.&rdquo;
           </p>
           <div className="mt-4 flex items-center gap-3">
             <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-kita-green-soft font-display font-extrabold text-kita-green">

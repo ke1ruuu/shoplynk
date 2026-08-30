@@ -35,7 +35,7 @@ export default function AuthLayout({
 
         <footer className="px-5 py-6 text-center sm:px-8">
           <p className="text-xs text-muted">
-            © 2026 Project Kita · Gen. Trias, Cavite
+            © 2026 LYNK · Gen. Trias, Cavite
           </p>
         </footer>
       </div>

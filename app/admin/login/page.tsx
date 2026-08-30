@@ -5,7 +5,7 @@ import { getCurrentUserProfile } from "@/lib/auth/session";
 import { AdminLoginForm } from "@/components/admin/admin-login-form";
 
 export const metadata: Metadata = {
-  title: "Campus Administrator Login — Project Kita",
+  title: "Campus Administrator Login — LYNK",
   description: "Secure login portal for Luis Y. Ferrer Jr. Senior High School administrators.",
 };
 

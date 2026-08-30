@@ -26,7 +26,7 @@ export function LoginForm({ next }: { next?: string }) {
           Log in to your kita.
         </h1>
         <p className="text-[15px] text-muted">
-          New to Project Kita?{" "}
+          New to LYNK?{" "}
           <Link
             href="/signup"
             className="font-semibold text-kita-green underline-offset-4 hover:underline"

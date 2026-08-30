@@ -6,7 +6,7 @@ import { getCurrentUserProfile } from "@/lib/auth/session";
 import { VerificationPortalView } from "@/components/seller/verification-portal-view";
 
 export const metadata: Metadata = {
-  title: "Student Seller Verification — Project Kita",
+  title: "Student Seller Verification — LYNK",
   description: "Apply for campus seller verification at Luis Y. Ferrer Jr. Senior High School.",
 };
 

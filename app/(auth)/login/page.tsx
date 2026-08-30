@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import { LoginForm } from "@/components/auth/login-form";
 
 export const metadata: Metadata = {
-  title: "Log in — Project Kita",
-  description: "Log in to your Project Kita account.",
+  title: "Log in — LYNK",
+  description: "Log in to your LYNK account.",
 };
 
 export default async function LoginPage({

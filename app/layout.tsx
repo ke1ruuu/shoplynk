@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Project Kita — Empower Student Entrepreneurs",
+  title: "LYNK — Empower Student Entrepreneurs",
   description:
-    "Discover, support, and sell products and services within your school community.",
+    "Discover, support, and sell products and services within the Luis Y. Ferrer Jr. Senior High School community.",
 };
 
 export default function RootLayout({

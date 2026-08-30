@@ -36,7 +36,7 @@ export function ForSellersSection() {
               Turn your ideas into <span className="marker">kita.</span>
             </h2>
             <p className="text-lg text-muted leading-relaxed max-w-xl">
-              Project Kita gives you everything you need to reach your school
+              LYNK gives you everything you need to reach your school
               community and turn a side hustle into real income.
             </p>
 

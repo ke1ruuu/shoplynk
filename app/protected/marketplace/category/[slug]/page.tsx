@@ -21,7 +21,7 @@ export async function generateMetadata({
     .join(" ");
 
   return {
-    title: `${formattedTitle} — Project Kita Marketplace`,
+    title: `${formattedTitle} — LYNK Marketplace`,
     description: `Browse ${formattedTitle} listings from student entrepreneurs.`,
   };
 }

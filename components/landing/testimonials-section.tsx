@@ -18,7 +18,7 @@ const TESTIMONIALS: Testimonial[] = [
   {
     id: "1",
     quote:
-      "Project Kita helped me turn my hobby into a small business. I've met so many amazing people in our school!",
+      "LYNK helped me turn my hobby into a small business. I've met so many amazing people in our school!",
     author: "Jillian Reyes",
     role: "Student Seller",
     avatarUrl:

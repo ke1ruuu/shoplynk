@@ -59,8 +59,8 @@ export function HeroSection() {
             <div className="rise inline-flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full bg-surface border border-line shadow-flyer">
               <span className="w-7 h-7 rounded-full overflow-hidden flex-shrink-0 bg-paper border border-line flex items-center justify-center">
                 <Image
-                  src="/lyfjshs-logo.png"
-                  alt="Luis Y Ferrer Jr. Senior High School seal"
+                  src="/LYNKICON.png"
+                  alt="LYNK Icon"
                   width={28}
                   height={28}
                   className="object-contain w-full h-full"

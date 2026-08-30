@@ -185,7 +185,7 @@ export function MarketplaceView({
               </div>
               <div className="flex flex-col gap-1.5 max-w-md">
                 <h3 className="font-display text-xl font-bold text-ink">
-                  Welcome to the Project Kita Beta!
+                  Welcome to the LYNK Beta!
                 </h3>
                 <p className="text-sm text-muted leading-relaxed">
                   {searchQuery || minPrice || maxPrice

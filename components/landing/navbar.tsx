@@ -10,11 +10,11 @@ export function Navbar() {
   const [activeLink, setActiveLink] = useState("Home");
 
   const navLinks = [
-    { label: "Home", href: "#home" },
-    { label: "Marketplace", href: "#marketplace" },
-    { label: "How It Works", href: "#how-it-works" },
-    { label: "For Sellers", href: "#for-sellers" },
-    { label: "About Us", href: "#testimonials" },
+    { label: "Home", href: "/#home" },
+    { label: "About Us", href: "/about" },
+    { label: "Marketplace", href: "/#marketplace" },
+    { label: "How It Works", href: "/#how-it-works" },
+    { label: "For Sellers", href: "/#for-sellers" },
   ];
 
   return (

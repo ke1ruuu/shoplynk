@@ -10,7 +10,7 @@ import { ProductItem } from "@/components/marketplace/product-card";
 import { Category } from "@/components/marketplace/marketplace-filters";
 
 export const metadata: Metadata = {
-  title: "Search Results — Project Kita",
+  title: "Search Results — LYNK",
   description: "Search products and services across campus sellers.",
 };
 

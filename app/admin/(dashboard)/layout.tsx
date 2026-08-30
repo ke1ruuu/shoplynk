@@ -5,7 +5,7 @@ import { getCurrentUserProfile } from "@/lib/auth/session";
 import { ProtectedLayout } from "@/components/shell/protected-layout";
 
 export const metadata: Metadata = {
-  title: "Admin Console — Project Kita",
+  title: "Admin Console — LYNK",
   description: "Campus administrator console for student seller verifications.",
 };
 

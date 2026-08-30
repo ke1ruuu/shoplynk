@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "http",
+        hostname: "**",
+      },
+      {
+        protocol: "http",
         hostname: "localhost",
       },
       {
@@ -16,6 +20,25 @@ const nextConfig: NextConfig = {
         hostname: "127.0.0.1",
       },
     ],
+  },
+  async redirects() {
+    return [
+      {
+        source: "/terms-of-service",
+        destination: "/terms",
+        permanent: true,
+      },
+      {
+        source: "/terms-and-conditions",
+        destination: "/terms",
+        permanent: true,
+      },
+      {
+        source: "/privacy-policy",
+        destination: "/privacy",
+        permanent: true,
+      },
+    ];
   },
 };
 

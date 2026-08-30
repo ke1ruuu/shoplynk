@@ -11,7 +11,7 @@ import {
 import { ProductItem } from "@/components/marketplace/product-card";
 
 export const metadata: Metadata = {
-  title: "Shop Campus Marketplace — Project Kita",
+  title: "Shop Campus Marketplace — LYNK",
   description: "Browse trending student products, homemade treats, and school merchandise at LYFJSHS.",
 };
 

@@ -7,7 +7,7 @@ import { getCurrentUserProfile } from "@/lib/auth/session";
 import { ensureSellerStoreAction } from "@/app/actions/seller";
 import { SellerStudioView, SellerOrder } from "@/components/seller/seller-studio-view";
 export const metadata: Metadata = {
-  title: "Seller Studio Dashboard — Project Kita",
+  title: "Seller Studio Dashboard — LYNK",
   description: "Manage your campus store catalog, incoming student orders, and inventory.",
 };
 

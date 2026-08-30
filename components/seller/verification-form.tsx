@@ -93,6 +93,11 @@ export function VerificationForm({
           <h1 className="font-display text-2xl sm:text-3xl font-extrabold text-ink">
             Apply for Campus Seller Account
           </h1>
+          <p className="text-sm sm:text-base text-muted max-w-xl leading-relaxed">
+            LYNK is a private campus marketplace for verified students and faculty of{" "}
+            <span className="font-semibold text-ink">Luis Y. Ferrer Jr. Senior High School</span>.
+            Submit your student credentials below to unlock your Seller Studio.
+          </p>
         </div>
       </div>
 

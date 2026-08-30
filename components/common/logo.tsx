@@ -1,5 +1,6 @@
 import React from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 interface LogoProps {
   showTagline?: boolean;
@@ -10,55 +11,38 @@ interface LogoProps {
 }
 
 export function Logo({
-  showTagline = true,
   size = "md",
-  tone = "light",
   className = "",
   href = "/",
 }: LogoProps) {
-  const markSizes = {
-    sm: "w-8 h-8 text-base rounded-lg",
-    md: "w-10 h-10 text-lg rounded-xl",
-    lg: "w-12 h-12 text-2xl rounded-xl",
+  // Standard, prominent logo sizing: sm = 36px, md = 46px, lg = 58px
+  const sizeClasses = {
+    sm: "h-9 w-auto",
+    md: "h-11 sm:h-12 w-auto",
+    lg: "h-14 sm:h-16 w-auto",
   };
 
-  const titleSizes = {
-    sm: "text-lg",
-    md: "text-xl",
-    lg: "text-2xl",
+  const imageDimensions = {
+    sm: { width: 50, height: 36 },
+    md: { width: 66, height: 48 },
+    lg: { width: 88, height: 64 },
   };
-
-  const titleColor =
-    tone === "dark"
-      ? "text-paper group-hover:text-spark"
-      : "text-ink group-hover:text-kita-green";
-  const taglineColor = tone === "dark" ? "text-paper/60" : "text-muted";
 
   return (
     <Link
       href={href}
-      aria-label="Project Kita — home"
-      className={`inline-flex items-center gap-2.5 group cursor-pointer ${className}`}
+      aria-label="LYNK — home"
+      className={`inline-flex items-center group cursor-pointer transition-transform duration-200 hover:scale-[1.03] ${className}`}
     >
-      <div
-        className={`${markSizes[size]} bg-kita-green text-white font-display flex items-center justify-center shadow-flyer transition-transform duration-200 group-hover:-rotate-6 relative flex-shrink-0`}
-      >
-        <span className="font-extrabold tracking-tighter leading-none">K</span>
-        {/* Gold pushpin spark — the bulletin-board signature */}
-        <span className="pin -top-1.5 -right-1.5" aria-hidden="true" />
-      </div>
-
-      <div className="flex flex-col justify-center leading-none">
-        <span
-          className={`${titleSizes[size]} font-display font-extrabold tracking-tight transition-colors ${titleColor}`}
-        >
-          Project Kita
-        </span>
-        {showTagline && (
-          <span className={`eyebrow mt-1 text-[0.6rem] tracking-[0.14em] ${taglineColor}`}>
-            Empower · Sell · Earn
-          </span>
-        )}
+      <div className={`relative flex items-center justify-center ${sizeClasses[size]}`}>
+        <Image
+          src="/LYNKICON.png"
+          alt="LYNK Logo"
+          width={imageDimensions[size].width}
+          height={imageDimensions[size].height}
+          className="h-full w-auto object-contain drop-shadow-sm"
+          priority
+        />
       </div>
     </Link>
   );

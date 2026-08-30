@@ -2,6 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Home,
@@ -131,16 +132,22 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
         {/* Top Header */}
         <div className={`flex flex-col border-b border-line ${isCollapsedView ? "p-3 items-center" : "p-4 gap-3"}`}>
           {isCollapsedView ? (
-            /* Collapsed Header: Interactive Hoverable 'K' Icon that expands on click */
+            /* Collapsed Header: Interactive Hoverable LYNK Icon that expands on click */
             <button
               type="button"
               onClick={toggleCollapsed}
-              className="group relative flex h-12 w-12 items-center justify-center rounded-2xl bg-kita-green text-white font-display font-extrabold text-xl shadow-flyer hover:bg-kita-green-deep transition-all active:scale-95"
+              className="group relative flex h-12 w-12 items-center justify-center rounded-2xl bg-paper border border-line shadow-flyer hover:border-kita-green transition-all active:scale-95 p-2"
               title="Click to expand sidebar"
               aria-label="Expand sidebar"
             >
-              <span className="group-hover:hidden">K</span>
-              <ChevronRight className="hidden group-hover:block h-6 w-6 transition-transform" />
+              <Image
+                src="/LYNKICON.png"
+                alt="LYNK Logo"
+                width={36}
+                height={36}
+                className="h-full w-auto object-contain group-hover:hidden"
+              />
+              <ChevronRight className="hidden group-hover:block h-6 w-6 text-kita-green transition-transform" />
             </button>
           ) : (
             /* Expanded Header: Logo and Collapse Button */

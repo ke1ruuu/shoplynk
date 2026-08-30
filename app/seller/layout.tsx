@@ -5,7 +5,7 @@ import { getCurrentUserProfile } from "@/lib/auth/session";
 import { ProtectedLayout } from "@/components/shell/protected-layout";
 
 export const metadata: Metadata = {
-  title: "Seller Studio — Project Kita",
+  title: "Seller Studio — LYNK",
   description: "Manage your campus store catalog, products, and inventory.",
 };
 

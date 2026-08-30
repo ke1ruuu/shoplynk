@@ -31,7 +31,7 @@ export function SignupForm({
   return (
     <div className="flex flex-col gap-7">
       <header className="flex flex-col gap-2">
-        <span className="eyebrow text-kita-green">Join Project Kita</span>
+        <span className="eyebrow text-kita-green">Join LYNK</span>
         <h1 className="font-display text-3xl font-extrabold leading-tight text-ink">
           Create your account.
         </h1>
@@ -141,7 +141,7 @@ export function SignupForm({
             />
             <p className="text-sm leading-snug text-muted">
               <label htmlFor="terms" className="cursor-pointer">
-                I agree to Project Kita&apos;s
+                I agree to LYNK&apos;s
               </label>{" "}
               <Link
                 href="/terms"

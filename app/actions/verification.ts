@@ -154,7 +154,7 @@ export async function approveVerificationAction(
       user_id: applicantId,
       name: storeName,
       slug,
-      description: "Verified student seller storefront on Project Kita.",
+      description: "Verified student seller storefront on LYNK.",
       pickup_locations: "Campus Courtyard / Main Hallway",
       operating_hours: "Mon-Fri 10:00 AM - 4:30 PM",
       is_active: true,

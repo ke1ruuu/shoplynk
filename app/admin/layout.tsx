@@ -2,7 +2,7 @@ import React from "react";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Campus Administrator Portal — Project Kita",
+  title: "Campus Administrator Portal — LYNK",
   description: "Administrative console for Luis Y. Ferrer Jr. Senior High School.",
 };
 

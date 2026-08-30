@@ -8,7 +8,7 @@ import { ProductItem } from "@/components/marketplace/product-card";
 import { Category } from "@/components/marketplace/marketplace-filters";
 
 export const metadata: Metadata = {
-  title: "Marketplace — Project Kita",
+  title: "Marketplace — LYNK",
   description: "Browse products and services from verified student entrepreneurs.",
 };
 

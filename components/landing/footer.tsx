@@ -6,17 +6,18 @@ import { Mail, CheckCircle2, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/common/logo";
 
 const QUICK_LINKS = [
-  { label: "Marketplace", href: "#marketplace" },
-  { label: "How It Works", href: "#how-it-works" },
-  { label: "For Sellers", href: "#for-sellers" },
-  { label: "About Us", href: "#testimonials" },
+  { label: "Home", href: "/#home" },
+  { label: "About Us", href: "/about" },
+  { label: "Marketplace", href: "/#marketplace" },
+  { label: "How It Works", href: "/#how-it-works" },
+  { label: "For Sellers", href: "/#for-sellers" },
 ];
 
 const SUPPORT_LINKS = [
-  { label: "Help Center", href: "#" },
-  { label: "Guidelines", href: "#" },
-  { label: "Contact Us", href: "#" },
-  { label: "Privacy Policy", href: "#" },
+  { label: "Marketplace Guidelines", href: "/terms#seller-rules" },
+  { label: "Terms of Service", href: "/terms" },
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Safe Meetup Spots", href: "/terms#campus-meetups" },
 ];
 
 export function Footer() {
@@ -99,9 +100,9 @@ export function Footer() {
             <ul className="flex flex-col gap-2.5 text-sm text-paper/70">
               {SUPPORT_LINKS.map((l) => (
                 <li key={l.label}>
-                  <a href={l.href} className="hover:text-paper transition-colors">
+                  <Link href={l.href} className="hover:text-paper transition-colors">
                     {l.label}
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -146,7 +147,17 @@ export function Footer() {
         </div>
 
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-paper/60">
-          <span>© 2026 Project Kita · Gen. Trias, Cavite</span>
+          <div className="flex items-center gap-4 flex-wrap">
+            <span>© 2026 LYNK · Gen. Trias, Cavite</span>
+            <span className="hidden sm:inline text-white/20">·</span>
+            <Link href="/terms" className="hover:text-paper transition-colors">
+              Terms of Service
+            </Link>
+            <span className="text-white/20">·</span>
+            <Link href="/privacy" className="hover:text-paper transition-colors">
+              Privacy Policy
+            </Link>
+          </div>
           <span className="eyebrow text-[0.6rem] text-paper/50">
             Built by students, for students
           </span>

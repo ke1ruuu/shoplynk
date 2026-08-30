@@ -46,7 +46,7 @@ export function AccountTypeToggle({
   return (
     <div
       role="radiogroup"
-      aria-label="What brings you to Project Kita?"
+      aria-label="What brings you to LYNK?"
       className="grid grid-cols-1 sm:grid-cols-2 gap-3"
     >
       {OPTIONS.map(({ value: v, icon: Icon, title, blurb }) => {

@@ -3,9 +3,9 @@ import { SignupForm } from "@/components/auth/signup-form";
 import type { AccountType } from "@/components/auth/account-type-toggle";
 
 export const metadata: Metadata = {
-  title: "Sign up — Project Kita",
+  title: "Sign up — LYNK",
   description:
-    "Create your Project Kita account and start buying or selling within your school community.",
+    "Create your LYNK account and start buying or selling within your school community.",
 };
 
 export default async function SignupPage({
