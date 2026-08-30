@@ -101,14 +101,16 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Logo size="sm" showTagline={false} href={isAdmin ? "/admin" : "/"} />
+          <Logo size="sm" showTagline={false} href={isAdmin ? "/admin" : "/protected"} />
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-full bg-kita-green-soft px-2.5 py-0.5 text-xs font-semibold text-kita-green">
-            <MapPin className="h-3 w-3" />
-            <span>{isAdmin ? "Admin Console" : "LYFJSHS"}</span>
-          </div>
+          {isAdmin && (
+            <div className="flex items-center gap-1 rounded-full bg-kita-green-soft px-2.5 py-0.5 text-xs font-semibold text-kita-green">
+              <Shield className="h-3 w-3" />
+              <span>Admin Console</span>
+            </div>
+          )}
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-kita-green text-xs font-bold text-white shadow-flyer">
             {initials}
           </span>
@@ -132,28 +134,37 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
         {/* Top Header */}
         <div className={`flex flex-col border-b border-line ${isCollapsedView ? "p-3 items-center" : "p-4 gap-3"}`}>
           {isCollapsedView ? (
-            /* Collapsed Header: Interactive Hoverable LYNK Icon that expands on click */
-            <button
-              type="button"
-              onClick={toggleCollapsed}
-              className="group relative flex h-12 w-12 items-center justify-center rounded-2xl bg-paper border border-line shadow-flyer hover:border-kita-green transition-all active:scale-95 p-2"
-              title="Click to expand sidebar"
-              aria-label="Expand sidebar"
-            >
-              <Image
-                src="/LYNKICON.png"
-                alt="LYNK Logo"
-                width={36}
-                height={36}
-                className="h-full w-auto object-contain group-hover:hidden"
-              />
-              <ChevronRight className="hidden group-hover:block h-6 w-6 text-kita-green transition-transform" />
-            </button>
+            /* Collapsed Header: LYNK Logo linking to /protected + expand button */
+            <div className="flex flex-col items-center gap-2">
+              <Link
+                href={isAdmin ? "/admin" : "/protected"}
+                className="flex h-10 w-10 items-center justify-center rounded-xl p-1 transition-transform hover:scale-105"
+                title="Go to Dashboard"
+                aria-label="Go to Dashboard"
+              >
+                <Image
+                  src="/LYNKICON.png"
+                  alt="LYNK Logo"
+                  width={36}
+                  height={36}
+                  className="h-full w-auto object-contain"
+                />
+              </Link>
+              <button
+                type="button"
+                onClick={toggleCollapsed}
+                className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep focus-visible:outline-kita-green transition-colors"
+                title="Expand sidebar"
+                aria-label="Expand sidebar"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
           ) : (
             /* Expanded Header: Logo and Collapse Button */
             <>
               <div className="flex items-center justify-between">
-                <Logo size="sm" showTagline={false} href={isAdmin ? "/admin" : "/"} />
+                <Logo size="sm" showTagline={false} href={isAdmin ? "/admin" : "/protected"} />
 
                 {/* Desktop Collapse Toggle */}
                 <button
@@ -179,15 +190,13 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                 )}
               </div>
 
-              {/* Pilot Campus / Admin Badge */}
-              <div className="flex items-center gap-1.5 rounded-xl border border-kita-green/20 bg-kita-green-soft px-3 py-1.5 text-xs font-semibold text-kita-green">
-                {isAdmin ? (
+              {/* Admin Badge (if Admin) */}
+              {isAdmin && (
+                <div className="flex items-center gap-1.5 rounded-xl border border-kita-green/20 bg-kita-green-soft px-3 py-1.5 text-xs font-semibold text-kita-green">
                   <Shield className="h-3.5 w-3.5 flex-shrink-0" />
-                ) : (
-                  <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
-                )}
-                <span className="truncate">{isAdmin ? "Campus Administrator" : "LYFJSHS Campus"}</span>
-              </div>
+                  <span className="truncate">Campus Administrator</span>
+                </div>
+              )}
             </>
           )}
         </div>
