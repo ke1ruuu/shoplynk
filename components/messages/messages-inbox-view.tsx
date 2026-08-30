@@ -58,6 +58,45 @@ function formatTime(iso: string) {
   return d.toLocaleDateString("en-PH", { month: "short", day: "numeric" });
 }
 
+const MessageBubble = React.memo(function MessageBubble({
+  msg,
+  isMine,
+}: {
+  msg: ChatMessage;
+  isMine: boolean;
+}) {
+  return (
+    <div
+      className={`flex flex-col gap-1 max-w-[80%] ${
+        isMine ? "self-end items-end" : "self-start items-start"
+      }`}
+    >
+      <div
+        className={`p-3.5 text-xs leading-relaxed ${
+          isMine
+            ? "bg-kita-green text-white rounded-2xl rounded-br-xs shadow-xs"
+            : "bg-surface text-ink border border-line rounded-2xl rounded-bl-xs shadow-xs"
+        }`}
+      >
+        {msg.content}
+      </div>
+
+      <div className="flex items-center gap-1 px-1 text-xs text-muted font-mono">
+        <span>{formatTime(msg.created_at)}</span>
+        {isMine && (
+          <span className="ml-0.5">
+            {msg.is_read ? (
+              <CheckCheck className="h-3 w-3 text-kita-green" />
+            ) : (
+              <Check className="h-3 w-3 text-muted" />
+            )}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+});
+
 export function MessagesInboxView({
   currentUserId,
   initialConversations,
@@ -567,41 +606,13 @@ export function MessagesInboxView({
                   </div>
                 )}
 
-                {messages.map((msg) => {
-                  const isMine = msg.sender_id === currentUserId;
-
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex flex-col gap-1 max-w-[80%] ${
-                        isMine ? "self-end items-end" : "self-start items-start"
-                      }`}
-                    >
-                      <div
-                        className={`p-3.5 text-xs leading-relaxed ${
-                          isMine
-                            ? "bg-kita-green text-white rounded-2xl rounded-br-xs shadow-xs"
-                            : "bg-surface text-ink border border-line rounded-2xl rounded-bl-xs shadow-xs"
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
-
-                      <div className="flex items-center gap-1 px-1 text-xs text-muted font-mono">
-                        <span>{formatTime(msg.created_at)}</span>
-                        {isMine && (
-                          <span className="ml-0.5">
-                            {msg.is_read ? (
-                              <CheckCheck className="h-3 w-3 text-kita-green" />
-                            ) : (
-                              <Check className="h-3 w-3 text-muted" />
-                            )}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
+                {messages.map((msg) => (
+                  <MessageBubble
+                    key={msg.id}
+                    msg={msg}
+                    isMine={msg.sender_id === currentUserId}
+                  />
+                ))}
                 <div ref={messagesEndRef} />
               </div>
 

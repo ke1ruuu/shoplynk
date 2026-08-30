@@ -118,31 +118,37 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
 
   const { addItem } = useCart();
 
-  // Active / In-Progress purchases (excluding completed and cancelled)
-  const activeOrders = useMemo(
-    () => orders.filter((o) => !["COMPLETED", "CANCELLED"].includes(o.status)),
-    [orders]
-  );
+  // Single-pass memoized order categories
+  const { inProgressOrders, readyOrders, completedOrders, cancelledOrders, activeOrders } = useMemo(() => {
+    const inProg: BuyerOrder[] = [];
+    const ready: BuyerOrder[] = [];
+    const completed: BuyerOrder[] = [];
+    const cancelled: BuyerOrder[] = [];
+    const active: BuyerOrder[] = [];
 
-  const inProgressOrders = useMemo(
-    () => orders.filter((o) => ["PENDING", "PREPARING", "PAYMENT_REVIEW", "AWAITING_PAYMENT"].includes(o.status)),
-    [orders]
-  );
+    for (const o of orders) {
+      if (o.status === "COMPLETED") {
+        completed.push(o);
+      } else if (o.status === "CANCELLED") {
+        cancelled.push(o);
+      } else {
+        active.push(o);
+        if (o.status === "READY_FOR_PICKUP") {
+          ready.push(o);
+        } else {
+          inProg.push(o);
+        }
+      }
+    }
 
-  const readyOrders = useMemo(
-    () => orders.filter((o) => o.status === "READY_FOR_PICKUP"),
-    [orders]
-  );
-
-  const completedOrders = useMemo(
-    () => orders.filter((o) => o.status === "COMPLETED"),
-    [orders]
-  );
-
-  const cancelledOrders = useMemo(
-    () => orders.filter((o) => o.status === "CANCELLED"),
-    [orders]
-  );
+    return {
+      inProgressOrders: inProg,
+      readyOrders: ready,
+      completedOrders: completed,
+      cancelledOrders: cancelled,
+      activeOrders: active,
+    };
+  }, [orders]);
 
   const filteredOrders = useMemo(() => {
     let list = activeOrders;

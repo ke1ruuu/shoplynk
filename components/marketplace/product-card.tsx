@@ -43,7 +43,7 @@ interface ProductCardProps {
   onSelect?: (product: ProductItem) => void;
 }
 
-export function ProductCard({ product, onSelect }: ProductCardProps) {
+function ProductCardComponent({ product, onSelect }: ProductCardProps) {
   const { isFavorite, toggleFavorite } = useFavorites();
   const isLiked = isFavorite(product.id) || (!!product.slug && isFavorite(product.slug));
 
@@ -164,3 +164,5 @@ export function ProductCard({ product, onSelect }: ProductCardProps) {
     </article>
   );
 }
+
+export const ProductCard = React.memo(ProductCardComponent);

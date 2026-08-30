@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { ArrowRight, Sparkles, Store, X } from "lucide-react";
 import {
@@ -37,6 +37,10 @@ export function MarketplaceView({
 
   // Filter & Sort Logic
   const filteredProducts = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const min = minPrice !== "" ? Number(minPrice) : null;
+    const max = maxPrice !== "" ? Number(maxPrice) : null;
+
     return activeProductList
       .filter((p) => {
         // Category match
@@ -45,8 +49,7 @@ export function MarketplaceView({
         }
 
         // Search match (title, description, store name)
-        if (searchQuery.trim() !== "") {
-          const q = searchQuery.toLowerCase();
+        if (q !== "") {
           const titleMatch = p.title.toLowerCase().includes(q);
           const descMatch = p.description?.toLowerCase().includes(q) ?? false;
           const storeMatch = p.store?.name.toLowerCase().includes(q) ?? false;
@@ -54,12 +57,12 @@ export function MarketplaceView({
         }
 
         // Min price match
-        if (minPrice !== "" && p.price < Number(minPrice)) {
+        if (min !== null && p.price < min) {
           return false;
         }
 
         // Max price match
-        if (maxPrice !== "" && p.price > Number(maxPrice)) {
+        if (max !== null && p.price > max) {
           return false;
         }
 
@@ -79,18 +82,26 @@ export function MarketplaceView({
     maxPrice !== "" ||
     sortBy !== "newest";
 
-  function handleClearFilters() {
+  const handleClearFilters = useCallback(() => {
     setSelectedCategory("all");
     setSearchQuery("");
     setMinPrice("");
     setMaxPrice("");
     setSortBy("newest");
-  }
+  }, []);
 
-  const selectedCategoryName =
-    selectedCategory === "all"
-      ? "All Campus Listings"
-      : categoriesList.find((c) => c.slug === selectedCategory)?.name || "Category Items";
+  const handleSelectProduct = useCallback((p: ProductItem) => {
+    setActiveModalProduct(p);
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setActiveModalProduct(null);
+  }, []);
+
+  const selectedCategoryName = useMemo(() => {
+    if (selectedCategory === "all") return "All Campus Listings";
+    return categoriesList.find((c) => c.slug === selectedCategory)?.name || "Category Items";
+  }, [selectedCategory, categoriesList]);
 
   return (
     <div className="flex flex-col gap-8">
@@ -174,7 +185,7 @@ export function MarketplaceView({
                 <ProductCard
                   key={product.id}
                   product={product}
-                  onSelect={(p) => setActiveModalProduct(p)}
+                  onSelect={handleSelectProduct}
                 />
               ))}
             </div>
@@ -208,24 +219,23 @@ export function MarketplaceView({
                   href="/seller/verification"
                   className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-kita-green px-4 text-xs font-semibold text-white shadow-flyer hover:bg-kita-green-deep"
                 >
-                  <Store className="h-3.5 w-3.5" />
-                  <span>Start Selling on Campus</span>
+                  Open Storefront
                 </Link>
               </div>
             </div>
           )}
 
-          {/* Seller Verification CTA Section */}
+          {/* Optional Marketplace Hero / Vendor Callout */}
           {showCta && userRole !== "SELLER" && (
-            <section className="relative overflow-hidden rounded-2xl border border-spark/50 bg-spark-soft/50 p-6 sm:p-8 shadow-flyer mt-8">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <section className="relative overflow-hidden rounded-2xl border border-line bg-surface p-6 sm:p-8 shadow-xs">
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="flex flex-col gap-2 max-w-xl">
-                  <span className="eyebrow text-spark-ink flex items-center gap-1.5">
-                    <Store className="h-3.5 w-3.5" />
-                    Student Entrepreneurship
-                  </span>
-                  <h2 className="font-display text-2xl font-extrabold text-ink leading-tight">
-                    Turn your products, crafts, or skills into kita.
+                  <div className="flex items-center gap-2 text-kita-green">
+                    <Store className="h-4 w-4" />
+                    <span className="eyebrow">Student Marketplace</span>
+                  </div>
+                  <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-ink tracking-tight">
+                    Start selling on LYNK today
                   </h2>
                   <p className="text-sm text-muted leading-relaxed">
                     Open a verified storefront, list your products, track inquiries, and sell directly to students and faculty in your campus community.
@@ -247,7 +257,7 @@ export function MarketplaceView({
       {/* Product Quick-View Inspection Modal */}
       <ProductDetailModal
         product={activeModalProduct}
-        onClose={() => setActiveModalProduct(null)}
+        onClose={handleCloseModal}
       />
     </div>
   );

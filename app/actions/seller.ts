@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser, setSessionCookie } from "@/lib/auth/session";
+import { invalidateCache } from "@/lib/cache";
 
 // ------------------------------------------------------------
 // ZOD SCHEMAS
@@ -329,6 +330,7 @@ export async function createProductAction(
     });
   }
 
+  await invalidateCache("catalog:products");
   revalidatePath("/seller");
   revalidatePath("/protected/marketplace");
   return { success: true, message: "Product listed successfully!" };
@@ -413,6 +415,7 @@ export async function updateProductAction(
     });
   }
 
+  await invalidateCache("catalog:products");
   revalidatePath("/seller");
   revalidatePath("/protected/marketplace");
   return { success: true, message: "Product updated successfully!" };
@@ -451,6 +454,7 @@ export async function deleteProductAction(productId: string): Promise<ActionStat
     return { message: error.message };
   }
 
+  await invalidateCache("catalog:products");
   revalidatePath("/seller");
   revalidatePath("/protected/marketplace");
   return { success: true, message: "Product deleted." };
@@ -494,6 +498,7 @@ export async function toggleProductStatusAction(
     return { message: error.message };
   }
 
+  await invalidateCache("catalog:products");
   revalidatePath("/seller");
   revalidatePath("/protected/marketplace");
   return { success: true };
