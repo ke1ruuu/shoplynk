@@ -286,19 +286,19 @@ export function SellerStudioView({
                 </span>
               </div>
 
-              {orderList.length === 0 ? (
+              {openOrders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-2 p-12 text-center">
                   <Package className="h-8 w-8 text-muted/50" />
                   <h3 className="font-display text-sm font-bold text-ink">
-                    No orders in progress yet
+                    No active orders in progress
                   </h3>
                   <p className="text-xs text-muted max-w-sm leading-relaxed">
-                    When students pre-order snacks or merchandise from your storefront, they will track live here for break-time handoff.
+                    When students pre-order snacks or merchandise from your storefront, they will track live here for break-time handoff. Completed orders are archived.
                   </p>
                 </div>
               ) : (
                 <ul className="divide-y divide-line">
-                  {orderList.map((order) => {
+                  {openOrders.map((order) => {
                     const { intent, label } = orderStatus(order.status);
                     const isUpdating = updatingOrderId === order.id;
 

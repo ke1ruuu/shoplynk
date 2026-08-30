@@ -19,6 +19,7 @@ import {
   Check,
   ArrowRight,
   Heart,
+  MessageSquare,
 } from "lucide-react";
 import { ProductItem } from "@/components/marketplace/product-card";
 import { useCart } from "@/lib/cart-context";
@@ -347,9 +348,19 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
               </button>
             </div>
 
-            <div className="flex items-center justify-center gap-2 text-xs text-muted pt-1">
-              <ShieldCheck className="h-4 w-4 text-kita-green" />
-              <span>Campus Handoff · Verified Student Member</span>
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-line">
+              <Link
+                href={`/protected/messages?store=${product.store?.slug || ""}&message=${encodeURIComponent(`Hi! I'm inquiring about "${product.title}". Is it available for pickup?`)}`}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-muted hover:text-kita-green transition-colors"
+              >
+                <MessageSquare className="h-3.5 w-3.5" />
+                <span>Chat with {product.store?.name || "Seller"}</span>
+              </Link>
+
+              <div className="flex items-center gap-1.5 text-xs text-muted">
+                <ShieldCheck className="h-3.5 w-3.5 text-kita-green" />
+                <span>Verified Student Member</span>
+              </div>
             </div>
           </div>
         </div>

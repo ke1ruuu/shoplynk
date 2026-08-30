@@ -20,11 +20,16 @@ import {
   HelpCircle,
   Plus,
   ShieldCheck,
+  MessageSquare,
+  XCircle,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import { BuyerOrder } from "@/components/dashboard/buyer-dashboard-view";
 import { StatusPill, orderStatus } from "@/components/dashboard/status-pill";
 import { ProductItem } from "@/components/marketplace/product-card";
 import { useCart } from "@/lib/cart-context";
+import { cancelOrderAction } from "@/app/actions/orders";
 
 interface OrdersViewProps {
   displayName: string;
@@ -89,13 +94,35 @@ function getStatusMessage(status: string, location?: string | null, schedule?: s
   }
 }
 
-export function OrdersView({ displayName, orders, recommendedProducts = [] }: OrdersViewProps) {
-  const [activeTab, setActiveTab] = useState<"all" | "in_progress" | "ready" | "completed" | "cancelled">("all");
+const CANCELLATION_REASONS = [
+  "Changed mind / No longer needed",
+  "Ordered wrong items or quantity",
+  "Class schedule or pickup time conflict",
+  "Ordered by mistake / duplicate order",
+  "Other reason",
+];
+
+export function OrdersView({ displayName, orders: initialOrders, recommendedProducts = [] }: OrdersViewProps) {
+  const [orders, setOrders] = useState<BuyerOrder[]>(initialOrders);
+  const [activeTab, setActiveTab] = useState<"active" | "ready" | "completed" | "cancelled" | "all">("active");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedOrderId, setSelectedOrderId] = useState<string>(orders[0]?.id || "");
+  const [selectedOrderId, setSelectedOrderId] = useState<string>(initialOrders[0]?.id || "");
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
 
-  const { addItem, openCart } = useCart();
+  // Cancellation Modal State
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [orderToCancel, setOrderToCancel] = useState<BuyerOrder | null>(null);
+  const [selectedReason, setSelectedReason] = useState(CANCELLATION_REASONS[0]);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState<string | null>(null);
+
+  const { addItem } = useCart();
+
+  // Active / In-Progress purchases (excluding completed and cancelled)
+  const activeOrders = useMemo(
+    () => orders.filter((o) => !["COMPLETED", "CANCELLED"].includes(o.status)),
+    [orders]
+  );
 
   const inProgressOrders = useMemo(
     () => orders.filter((o) => ["PENDING", "PREPARING", "PAYMENT_REVIEW", "AWAITING_PAYMENT"].includes(o.status)),
@@ -118,15 +145,17 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
   );
 
   const filteredOrders = useMemo(() => {
-    let list = orders;
-    if (activeTab === "in_progress") {
-      list = inProgressOrders;
+    let list = activeOrders;
+    if (activeTab === "active") {
+      list = activeOrders;
     } else if (activeTab === "ready") {
       list = readyOrders;
     } else if (activeTab === "completed") {
       list = completedOrders;
     } else if (activeTab === "cancelled") {
       list = cancelledOrders;
+    } else if (activeTab === "all") {
+      list = orders;
     }
 
     if (!searchQuery.trim()) return list;
@@ -147,7 +176,8 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
 
   const activeStageIndex = activeOrder ? getStageIndex(activeOrder.status) : 0;
   const isCancelled = activeOrder?.status === "CANCELLED";
-  const isReady = activeOrder?.status === "READY_FOR_PICKUP";
+  const isCompleted = activeOrder?.status === "COMPLETED";
+  const canCancel = activeOrder && !isCancelled && !isCompleted;
 
   function handleQuickAdd(product: ProductItem) {
     addItem(product, 1);
@@ -155,6 +185,43 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
     setTimeout(() => {
       setAddedProductId(null);
     }, 1200);
+  }
+
+  function handleOpenCancelModal(order: BuyerOrder) {
+    setOrderToCancel(order);
+    setSelectedReason(CANCELLATION_REASONS[0]);
+    setCancelError(null);
+    setCancelModalOpen(true);
+  }
+
+  async function handleConfirmCancel() {
+    if (!orderToCancel || isCancelling) return;
+
+    setIsCancelling(true);
+    setCancelError(null);
+
+    const res = await cancelOrderAction({
+      orderId: orderToCancel.id,
+      orderNumber: orderToCancel.order_number,
+      reason: selectedReason,
+    });
+
+    if (res.success) {
+      // Optimistically update orders list
+      setOrders((prev) =>
+        prev.map((o) =>
+          o.id === orderToCancel.id || o.order_number === orderToCancel.order_number
+            ? { ...o, status: "CANCELLED" }
+            : o
+        )
+      );
+      setIsCancelling(false);
+      setCancelModalOpen(false);
+      setOrderToCancel(null);
+    } else {
+      setCancelError(res.error || "Failed to cancel order. Please try again.");
+      setIsCancelling(false);
+    }
   }
 
   return (
@@ -192,111 +259,94 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
           className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
         >
           {[
-            { id: "all", label: "All Orders", count: orders.length },
-            { id: "in_progress", label: "In Progress", count: inProgressOrders.length },
+            { id: "active", label: "Active Purchases", count: activeOrders.length },
             { id: "ready", label: "Ready for Pickup", count: readyOrders.length },
             { id: "completed", label: "Completed", count: completedOrders.length },
             { id: "cancelled", label: "Cancelled", count: cancelledOrders.length },
+            { id: "all", label: "All History", count: orders.length },
           ].map((tab) => {
-            const isSelected = activeTab === tab.id;
+            const isCurrent = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 role="tab"
-                aria-selected={isSelected}
-                tabIndex={isSelected ? 0 : -1}
-                type="button"
-                onClick={() => {
-                  setActiveTab(tab.id as typeof activeTab);
-                  const firstMatch =
-                    tab.id === "all"
-                      ? orders[0]
-                      : tab.id === "in_progress"
-                      ? inProgressOrders[0]
-                      : tab.id === "ready"
-                      ? readyOrders[0]
-                      : tab.id === "completed"
-                      ? completedOrders[0]
-                      : cancelledOrders[0];
-                  if (firstMatch) {
-                    setSelectedOrderId(firstMatch.id);
-                  }
-                }}
-                className={`flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold whitespace-nowrap transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kita-green ${
-                  isSelected
+                aria-selected={isCurrent}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-bold transition-all ${
+                  isCurrent
                     ? "bg-ink text-white shadow-sm"
-                    : "border border-line bg-surface text-muted hover:text-ink hover:bg-paper"
+                    : "border border-line bg-surface text-muted hover:bg-paper hover:text-ink hover:border-line-strong"
                 }`}
               >
                 <span>{tab.label}</span>
-                {tab.count > 0 && (
-                  <span
-                    className={`font-mono text-xs px-1.5 py-0.2 rounded-md ${
-                      isSelected
-                        ? "bg-white/20 text-white"
-                        : "bg-paper text-muted border border-line"
-                    }`}
-                  >
-                    {tab.count}
-                  </span>
-                )}
+                <span
+                  className={`rounded-full px-1.5 py-0.2 font-mono text-xs ${
+                    isCurrent
+                      ? "bg-white/20 text-white"
+                      : "bg-paper-deep text-muted"
+                  }`}
+                >
+                  {tab.count}
+                </span>
               </button>
             );
           })}
         </div>
 
-        {/* Search input */}
-        <div className="relative min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted" />
+        {/* Real-time Order Search */}
+        <div className="relative w-full md:w-72 flex-shrink-0">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by order #, item, or store..."
-            aria-label="Search orders"
-            className="h-9 w-full rounded-xl border border-line bg-surface pl-9 pr-3 text-xs font-semibold text-ink placeholder:text-muted/60 focus:border-kita-green focus:outline-none transition-colors"
+            placeholder="Search order #, store, item..."
+            className="h-9 w-full rounded-xl bg-surface border border-line pl-8 pr-3 text-xs text-ink placeholder:text-muted focus:border-kita-green focus:outline-none transition-colors"
           />
         </div>
       </div>
 
-      {/* 3. Two-Column Asymmetrical Grid */}
+      {/* 3. Empty State or 2-Column Workstation */}
       {filteredOrders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 p-16 text-center border border-line bg-surface rounded-2xl">
-          <Package className="h-10 w-10 text-muted/50" />
-          <h2 className="font-display text-base font-bold text-ink">
-            No orders found
-          </h2>
-          <p className="text-xs text-muted max-w-sm leading-relaxed">
-            {activeTab === "all"
-              ? "You haven't placed any campus orders yet. Pre-order freshly baked pastries and drinks for your next break."
-              : `No orders currently match the "${activeTab.replace("_", " ")}" filter.`}
-          </p>
+        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-line bg-surface p-12 text-center shadow-xs my-4">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-kita-green-soft text-kita-green">
+            <Package className="h-8 w-8" />
+          </div>
+          <div className="flex flex-col gap-1 max-w-sm">
+            <h2 className="font-display text-lg font-extrabold text-ink">
+              {searchQuery ? "No matching orders found" : "No campus orders in this tab"}
+            </h2>
+            <p className="text-xs text-muted leading-relaxed">
+              {searchQuery
+                ? `No orders matched "${searchQuery}". Try searching by order number or store name.`
+                : "Explore our verified student merchant catalogs across campus to place your first pre-order!"}
+            </p>
+          </div>
           <Link
             href="/protected/marketplace"
-            className="mt-2 inline-flex items-center gap-2 rounded-xl bg-kita-green px-4 py-2 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep transition-all"
+            className="inline-flex items-center gap-2 rounded-xl bg-kita-green px-4 py-2.5 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep transition-all active:scale-95 mt-2"
           >
-            <span>Explore Campus Marketplace</span>
-            <ArrowRight className="h-3.5 w-3.5" />
+            <ShoppingBag className="h-4 w-4" />
+            <span>Discover Campus Stores</span>
           </Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* LEFT COLUMN (5 Cols): Orders List + Campus Schedule & Recommendations to ease blank space */}
-          <aside className="lg:col-span-5 flex flex-col gap-5">
-            {/* Orders List Stream */}
+          {/* LEFT COLUMN (5 Cols): Orders Feed & Space Balancers */}
+          <aside className="lg:col-span-5 flex flex-col gap-6">
             <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between px-1">
-                <span className="eyebrow text-xs text-muted">
-                  {filteredOrders.length} {filteredOrders.length === 1 ? "Order" : "Orders"}
-                </span>
-                <span className="text-xs text-muted">Select an order to view details</span>
+              <div className="flex items-center justify-between">
+                <span className="eyebrow text-xs text-muted">Active Handoff Feed</span>
+                <span className="font-mono text-xs text-muted">{filteredOrders.length} orders</span>
               </div>
 
-              <ul className="flex flex-col gap-3" role="list">
+              <ul className="flex flex-col gap-2.5" role="list">
                 {filteredOrders.map((order) => {
                   const isSelected = activeOrder?.id === order.id;
-                  const { intent, label } = orderStatus(order.status);
-                  const sIdx = getStageIndex(order.status);
+                  const { label, intent } = orderStatus(order.status) || {
+                    label: order.status,
+                    intent: "neutral" as const,
+                  };
 
                   return (
                     <li key={order.id}>
@@ -310,7 +360,7 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
                             : "border-line bg-surface hover:bg-paper hover:border-line-strong"
                         }`}
                       >
-                        {/* Top Row: Store, Order #, Status */}
+                        {/* Top Row: Store Name, Order #, Status */}
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2.5 truncate">
                             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-kita-green text-xs font-extrabold text-white flex-shrink-0">
@@ -321,30 +371,31 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
                                 {order.storeName}
                               </span>
                               <span className="font-mono text-xs text-muted">
-                                {order.order_number}
+                                {order.order_number} · {formatDay(order.created_at)}
                               </span>
                             </div>
                           </div>
                           <StatusPill intent={intent}>{label}</StatusPill>
                         </div>
 
-                        {/* Mini Step Tracker Bar */}
-                        {order.status !== "CANCELLED" && (
-                          <div className="flex items-center gap-1 w-full pt-1" aria-hidden="true">
-                            {STAGES.map((st, idx) => (
-                              <div
-                                key={st.key}
-                                className={`h-1.5 flex-1 rounded-full transition-all ${
-                                  idx <= sIdx
-                                    ? "bg-kita-green"
-                                    : "bg-paper-deep"
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        )}
+                        {/* Items Summary Strip */}
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-ink font-medium bg-paper/60 rounded-xl p-2.5 border border-line">
+                          {order.items && order.items.length > 0 ? (
+                            order.items.map((it, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1">
+                                <span className="font-bold">{it.quantity}x</span>
+                                <span>{it.title}</span>
+                                {idx < (order.items?.length || 0) - 1 && (
+                                  <span className="text-muted">·</span>
+                                )}
+                              </span>
+                            ))
+                          ) : (
+                            <span>Campus snack pre-order</span>
+                          )}
+                        </div>
 
-                        {/* Items and Location Summary */}
+                        {/* Bottom Row: Location & Total */}
                         <div className="flex items-center justify-between text-xs text-muted pt-1 border-t border-line/60">
                           <div className="flex items-center gap-1.5 truncate max-w-[200px]">
                             <MapPin className="h-3.5 w-3.5 text-kita-green flex-shrink-0" />
@@ -441,7 +492,7 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
                           type="button"
                           onClick={() => handleQuickAdd(prod)}
                           aria-label={`Add ${prod.title} to cart`}
-                          className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all ${
+                          className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-bold transition-all cursor-pointer ${
                             isAdded
                               ? "bg-kita-green text-white"
                               : "border border-line bg-paper text-ink hover:bg-paper-deep hover:border-line-strong"
@@ -473,7 +524,7 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
                 <span>Need help with a pickup or missing item?</span>
               </div>
               <Link
-                href="/protected/marketplace"
+                href="/protected/messages"
                 className="font-bold text-kita-green hover:underline flex-shrink-0 pl-2"
               >
                 Contact Seller →
@@ -508,6 +559,27 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
                   </div>
 
                   <div className="flex items-center gap-2">
+                    <Link
+                      href={`/protected/messages?store=${encodeURIComponent(activeOrder.storeName || "")}&message=${encodeURIComponent(`Hi! I'm inquiring about my order #${activeOrder.order_number}.`)}`}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-bold text-ink hover:bg-paper transition-colors"
+                      title="Message Seller"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 text-muted" />
+                      <span>Message</span>
+                    </Link>
+
+                    {canCancel && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCancelModal(activeOrder)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-3 py-1.5 text-xs font-bold hover:bg-rose-100 hover:border-rose-300 transition-colors cursor-pointer"
+                        title="Cancel Order"
+                      >
+                        <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                        <span>Cancel Order</span>
+                      </button>
+                    )}
+
                     {orderStatus(activeOrder.status) && (
                       <StatusPill intent={orderStatus(activeOrder.status).intent}>
                         {orderStatus(activeOrder.status).label}
@@ -558,7 +630,7 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
                                   isPassed
                                     ? "border-kita-green bg-kita-green text-white"
                                     : isCurrent
-                                    ? "border-kita-green bg-surface text-kita-green ring-4 ring-kita-green/20"
+                                    ? "border-kita-green bg-surface text-kita-green ring-4 ring-kita-green/10"
                                     : "border-line bg-surface text-muted"
                                 }`}
                               >
@@ -568,65 +640,61 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
                                   <span className="font-mono text-xs">{idx + 1}</span>
                                 )}
                               </div>
-                              <span
-                                className={`text-xs font-bold text-center leading-tight whitespace-nowrap ${
-                                  isCurrent
-                                    ? "text-kita-green"
-                                    : isPassed
-                                    ? "text-ink"
-                                    : "text-muted"
-                                }`}
-                              >
-                                {stage.label}
-                              </span>
+                              <div className="text-center">
+                                <span
+                                  className={`block text-xs font-bold ${
+                                    isCurrent
+                                      ? "text-kita-green"
+                                      : isPassed
+                                      ? "text-ink"
+                                      : "text-muted"
+                                  }`}
+                                >
+                                  {stage.label}
+                                </span>
+                              </div>
                             </li>
                           );
                         })}
                       </ol>
                     </nav>
 
-                    {/* Accessible Live Announcement Banner */}
-                    <div
-                      aria-live="polite"
-                      className={`flex items-start gap-3 rounded-xl p-4 text-xs transition-colors ${
-                        isReady
-                          ? "bg-amber-500/10 border border-amber-500/30 text-amber-950 font-medium"
-                          : "bg-paper/80 border border-line text-ink"
-                      }`}
-                    >
-                      <Clock
-                        className={`h-4 w-4 flex-shrink-0 mt-0.5 ${
-                          isReady ? "text-amber-600 animate-pulse" : "text-kita-green"
-                        }`}
-                      />
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-bold text-xs">
-                          {isReady ? "Ready for Campus Pickup" : STAGES[activeStageIndex]?.label || "Tracking"}
-                        </span>
-                        <p className="text-muted leading-relaxed">
-                          {getStatusMessage(activeOrder.status, activeOrder.pickupLocation, activeOrder.preferredTime)}
-                        </p>
-                      </div>
+                    {/* Status Alert Notification Card */}
+                    <div className="rounded-xl border border-line bg-paper/60 p-3.5 flex items-start gap-3">
+                      <div className="h-2 w-2 rounded-full bg-kita-green animate-pulse mt-1.5 flex-shrink-0" />
+                      <p className="text-xs text-ink leading-relaxed font-medium">
+                        {getStatusMessage(
+                          activeOrder.status,
+                          activeOrder.pickupLocation,
+                          activeOrder.preferredTime
+                        )}
+                      </p>
                     </div>
                   </div>
                 ) : (
-                  <div className="p-5 text-xs text-rose-700 bg-rose-500/10 border-b border-rose-500/20">
-                    This order was cancelled.
+                  <div className="flex flex-col gap-2 p-5 border-b border-line bg-rose-50/50">
+                    <div className="flex items-center gap-2 text-rose-700">
+                      <XCircle className="h-5 w-5 flex-shrink-0" />
+                      <h3 className="font-display text-sm font-bold">This order has been cancelled</h3>
+                    </div>
+                    <p className="text-xs text-rose-600/90 leading-relaxed">
+                      The order is no longer active. If you paid via GCash, please coordinate with the student seller in Messages or campus treasury for any refund arrangements.
+                    </p>
                   </div>
                 )}
 
-                {/* 3. Campus Pickup Logistics & Schedule */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-line border-b border-line bg-paper/30">
+                {/* 3. Pickup Details Ledger Strip */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-line border-b border-line bg-surface">
                   <div className="flex flex-col gap-1.5 p-4 sm:p-5">
                     <span className="eyebrow text-xs text-muted flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-kita-green" />
-                      <span>Pickup Drop Point</span>
+                      <span>Campus Pickup Spot</span>
                     </span>
                     <span className="font-bold text-xs text-ink leading-snug">
-                      {activeOrder.pickupLocation || "Main Canteen Handoff Area"}
+                      {activeOrder.pickupLocation || "LYFJSHS Main Canteen Handoff Area"}
                     </span>
                     <span className="text-xs text-muted">
-                      LYFJSHS Campus
+                      Look for {activeOrder.storeName} banner
                     </span>
                   </div>
 
@@ -716,15 +784,28 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
                 </div>
 
                 {/* 6. Quick Action Buttons */}
-                <div className="flex items-center justify-between gap-3 p-4 border-t border-line bg-paper/50">
-                  <Link
-                    href={`/protected/marketplace`}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2 text-xs font-bold text-ink hover:bg-paper transition-colors"
-                  >
-                    <Store className="h-3.5 w-3.5 text-muted" />
-                    <span>Visit {activeOrder.storeName}</span>
-                    <ArrowUpRight className="h-3 w-3 text-muted" />
-                  </Link>
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-line bg-paper/50">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/protected/marketplace`}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2 text-xs font-bold text-ink hover:bg-paper transition-colors"
+                    >
+                      <Store className="h-3.5 w-3.5 text-muted" />
+                      <span>Visit {activeOrder.storeName}</span>
+                      <ArrowUpRight className="h-3 w-3 text-muted" />
+                    </Link>
+
+                    {canCancel && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenCancelModal(activeOrder)}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-3.5 py-2 text-xs font-bold hover:bg-rose-100 transition-colors cursor-pointer"
+                      >
+                        <XCircle className="h-3.5 w-3.5 text-rose-600" />
+                        <span>Cancel Order</span>
+                      </button>
+                    )}
+                  </div>
 
                   <Link
                     href="/protected/marketplace"
@@ -737,6 +818,114 @@ export function OrdersView({ displayName, orders, recommendedProducts = [] }: Or
               </div>
             </main>
           )}
+        </div>
+      )}
+
+      {/* 4. Cancellation Confirmation Modal Dialog */}
+      {cancelModalOpen && orderToCancel && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="cancel-dialog-title"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/60 backdrop-blur-xs animate-in fade-in"
+        >
+          <div className="relative w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-2xl flex flex-col gap-5">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-600 flex-shrink-0">
+                  <AlertTriangle className="h-6 w-6" />
+                </div>
+                <div className="flex flex-col">
+                  <h3
+                    id="cancel-dialog-title"
+                    className="font-display text-base font-bold text-ink"
+                  >
+                    Cancel Order {orderToCancel.order_number}?
+                  </h3>
+                  <span className="text-xs text-muted">
+                    Store: <strong>{orderToCancel.storeName}</strong>
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isCancelling) setCancelModalOpen(false);
+                }}
+                className="rounded-lg p-1 text-muted hover:text-ink hover:bg-paper transition-colors"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Warning Message */}
+            <div className="rounded-xl border border-rose-200 bg-rose-50/60 p-3.5 text-xs text-rose-800 leading-relaxed">
+              Are you sure you want to cancel this order? Once cancelled, the student seller will be notified immediately and the items will be returned to store inventory.
+            </div>
+
+            {/* Cancellation Reason Selector */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-ink">
+                Reason for cancellation:
+              </label>
+              <div className="flex flex-col gap-1.5">
+                {CANCELLATION_REASONS.map((reason) => (
+                  <label
+                    key={reason}
+                    className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-xs font-medium cursor-pointer transition-colors ${
+                      selectedReason === reason
+                        ? "border-kita-green bg-kita-green-soft/30 text-ink ring-1 ring-kita-green/40"
+                        : "border-line bg-paper/50 text-muted hover:bg-paper hover:text-ink"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="cancel_reason"
+                      checked={selectedReason === reason}
+                      onChange={() => setSelectedReason(reason)}
+                      className="accent-kita-green h-4 w-4"
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {cancelError && (
+              <p className="text-xs text-rose-600 font-semibold">{cancelError}</p>
+            )}
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-line">
+              <button
+                type="button"
+                disabled={isCancelling}
+                onClick={() => setCancelModalOpen(false)}
+                className="rounded-xl border border-line bg-paper px-4 py-2.5 text-xs font-bold text-ink hover:bg-paper-deep transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                Keep Order
+              </button>
+
+              <button
+                type="button"
+                disabled={isCancelling}
+                onClick={handleConfirmCancel}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2.5 text-xs font-bold text-white shadow-flyer hover:bg-rose-700 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isCancelling ? (
+                  <span>Cancelling...</span>
+                ) : (
+                  <>
+                    <XCircle className="h-4 w-4" />
+                    <span>Yes, Cancel Order</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

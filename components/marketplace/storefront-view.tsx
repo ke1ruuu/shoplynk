@@ -18,6 +18,7 @@ import {
   Package,
   Search,
   ArrowLeft,
+  MessageSquare,
 } from "lucide-react";
 import { ProductCard, ProductItem } from "./product-card";
 
@@ -142,24 +143,33 @@ export function StorefrontView({ store, products, isOwner }: StorefrontViewProps
                 </Link>
               </>
             ) : (
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-paper-deep cursor-pointer"
-                title="Share Storefront"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 text-kita-green" />
-                    <span className="text-kita-green font-bold">Link Copied</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="h-3.5 w-3.5 text-muted" />
-                    <span>Share Store</span>
-                  </>
-                )}
-              </button>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/protected/messages?store=${store.slug}`}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-kita-green px-3.5 py-1.5 text-xs font-bold text-white shadow-flyer transition-all hover:bg-kita-green-deep active:scale-95"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <span>Message Seller</span>
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 py-1.5 text-xs font-semibold text-ink transition-colors hover:bg-paper-deep cursor-pointer"
+                  title="Share Storefront"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-kita-green" />
+                      <span className="text-kita-green font-bold">Link Copied</span>
+                    </>
+                  ) : (
+                    <>
+                      <Share2 className="h-3.5 w-3.5 text-muted" />
+                      <span>Share Store</span>
+                    </>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>

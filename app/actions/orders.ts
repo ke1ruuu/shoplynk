@@ -61,8 +61,26 @@ export async function updateOrderStatusAction({
   }
 
   revalidatePath("/protected");
+  revalidatePath("/protected/orders");
   revalidatePath("/seller");
+  revalidatePath("/seller/orders");
   revalidatePath("/protected/marketplace");
 
   return { success: true };
+}
+
+export async function cancelOrderAction({
+  orderId,
+  orderNumber,
+  reason,
+}: {
+  orderId: string;
+  orderNumber?: string;
+  reason?: string;
+}) {
+  return await updateOrderStatusAction({
+    orderId,
+    orderNumber,
+    status: "CANCELLED",
+  });
 }

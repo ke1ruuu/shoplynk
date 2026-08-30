@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import {
   CheckCircle2,
   Clock,
@@ -14,6 +15,7 @@ import {
   CreditCard,
   Banknote,
   Check,
+  ArrowRight,
 } from "lucide-react";
 import { BuyerOrder } from "./buyer-dashboard-view";
 
@@ -247,8 +249,14 @@ export function OrderTrackingCard({ order }: { order: BuyerOrder }) {
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-1">
-            <span className="text-muted">Total Paid</span>
+          <div className="flex items-center justify-between pt-2 border-t border-line">
+            <Link
+              href="/protected/orders"
+              className="text-xs font-bold text-kita-green hover:underline flex items-center gap-1"
+            >
+              <span>Manage &amp; Track Order</span>
+              <ArrowRight className="h-3 w-3" />
+            </Link>
             <span className="font-mono text-base font-extrabold text-kita-green">
               {PESO(Number(order.total_amount || 0))}
             </span>

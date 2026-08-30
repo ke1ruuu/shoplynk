@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import { getOrCreateConversationAction } from "@/app/actions/messages";
 
 export interface CheckoutItemInput {
   productId: string;
@@ -136,6 +137,17 @@ export async function placeOrderAction(input: PlaceOrderInput): Promise<PlaceOrd
     }
 
     createdOrderNumbers.push(orderNumber);
+
+    // 5. Automatically create/link conversation thread with store
+    try {
+      if (validStoreId) {
+        await getOrCreateConversationAction({
+          storeId: validStoreId,
+        });
+      }
+    } catch (msgErr) {
+      console.warn("Auto-message thread creation notice:", msgErr);
+    }
 
     // Save detailed record for persistent session tracking
     placedOrdersForCookie.push({

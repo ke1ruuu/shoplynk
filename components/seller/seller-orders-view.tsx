@@ -22,6 +22,7 @@ import {
   Printer,
   ChevronRight,
   AlertTriangle,
+  MessageSquare,
 } from "lucide-react";
 import { StatusPill, orderStatus } from "@/components/dashboard/status-pill";
 import { updateOrderStatusAction } from "@/app/actions/orders";
@@ -66,7 +67,7 @@ function formatDay(iso: string) {
 
 export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrdersViewProps) {
   const [orders, setOrders] = useState<SellerOrder[]>(initialOrders);
-  const [activeTab, setActiveTab] = useState<"all" | "pending" | "preparing" | "ready" | "completed" | "cancelled">("all");
+  const [activeTab, setActiveTab] = useState<"active" | "all" | "pending" | "preparing" | "ready" | "completed" | "cancelled">("active");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string>(initialOrders[0]?.id || "");
   const [isUpdating, setIsUpdating] = useState(false);
@@ -78,17 +79,20 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
   const readyOrders = useMemo(() => orders.filter((o) => o.status === "READY_FOR_PICKUP"), [orders]);
   const completedOrders = useMemo(() => orders.filter((o) => o.status === "COMPLETED"), [orders]);
   const cancelledOrders = useMemo(() => orders.filter((o) => o.status === "CANCELLED"), [orders]);
+  const activeOrders = useMemo(() => orders.filter((o) => o.status !== "COMPLETED" && o.status !== "CANCELLED"), [orders]);
 
   const activeOrdersCount = pendingOrders.length + preparingOrders.length + readyOrders.length;
   const totalRevenue = completedOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
 
   const filteredOrders = useMemo(() => {
-    let list = orders;
-    if (activeTab === "pending") list = pendingOrders;
+    let list = activeOrders;
+    if (activeTab === "active") list = activeOrders;
+    else if (activeTab === "pending") list = pendingOrders;
     else if (activeTab === "preparing") list = preparingOrders;
     else if (activeTab === "ready") list = readyOrders;
     else if (activeTab === "completed") list = completedOrders;
     else if (activeTab === "cancelled") list = cancelledOrders;
+    else if (activeTab === "all") list = orders;
 
     if (!searchQuery.trim()) return list;
 
@@ -100,7 +104,7 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
         o.pickup_location.toLowerCase().includes(q) ||
         o.items.some((i) => i.title.toLowerCase().includes(q))
     );
-  }, [orders, activeTab, pendingOrders, preparingOrders, readyOrders, completedOrders, cancelledOrders, searchQuery]);
+  }, [orders, activeTab, activeOrders, pendingOrders, preparingOrders, readyOrders, completedOrders, cancelledOrders, searchQuery]);
 
   const activeOrder = useMemo(() => {
     return filteredOrders.find((o) => o.id === selectedOrderId) || filteredOrders[0] || orders[0];
@@ -207,12 +211,13 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
           className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none"
         >
           {[
-            { id: "all", label: "All Orders", count: orders.length },
+            { id: "active", label: "Active Orders", count: activeOrdersCount },
             { id: "pending", label: "New / Pending", count: pendingOrders.length },
             { id: "preparing", label: "Preparing", count: preparingOrders.length },
             { id: "ready", label: "Ready for Pickup", count: readyOrders.length },
             { id: "completed", label: "Completed", count: completedOrders.length },
             { id: "cancelled", label: "Cancelled", count: cancelledOrders.length },
+            { id: "all", label: "All History", count: orders.length },
           ].map((tab) => {
             const isSelected = activeTab === tab.id;
             return (
@@ -225,8 +230,8 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
                 onClick={() => {
                   setActiveTab(tab.id as typeof activeTab);
                   const firstMatch =
-                    tab.id === "all"
-                      ? orders[0]
+                    tab.id === "active"
+                      ? activeOrders[0]
                       : tab.id === "pending"
                       ? pendingOrders[0]
                       : tab.id === "preparing"
@@ -235,7 +240,9 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
                       ? readyOrders[0]
                       : tab.id === "completed"
                       ? completedOrders[0]
-                      : cancelledOrders[0];
+                      : tab.id === "cancelled"
+                      ? cancelledOrders[0]
+                      : orders[0];
                   if (firstMatch) {
                     setSelectedOrderId(firstMatch.id);
                   }
@@ -395,11 +402,22 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
                     </div>
                   </div>
 
-                  {orderStatus(activeOrder.status) && (
-                    <StatusPill intent={orderStatus(activeOrder.status).intent}>
-                      {orderStatus(activeOrder.status).label}
-                    </StatusPill>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/protected/messages`}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-3 py-1.5 text-xs font-bold text-ink hover:bg-paper transition-colors"
+                      title="Message Customer"
+                    >
+                      <MessageSquare className="h-3.5 w-3.5 text-muted" />
+                      <span>Message</span>
+                    </Link>
+
+                    {orderStatus(activeOrder.status) && (
+                      <StatusPill intent={orderStatus(activeOrder.status).intent}>
+                        {orderStatus(activeOrder.status).label}
+                      </StatusPill>
+                    )}
+                  </div>
                 </div>
 
                 {/* 2. Instant Order Status Stepper Actions (Workflow Controls) */}
