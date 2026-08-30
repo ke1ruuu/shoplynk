@@ -18,8 +18,10 @@ import {
   Clock,
   Loader2,
   Sparkles,
-  Link as LinkIcon,
   Check,
+  UploadCloud,
+  ImagePlus,
+  Trash2,
 } from "lucide-react";
 import { createProductAction, updateProductAction, ActionState } from "@/app/actions/seller";
 
@@ -50,41 +52,6 @@ interface ProductFormModalProps {
   onSaved?: () => void;
 }
 
-const PRESET_PRODUCT_IMAGES = [
-  {
-    label: "Cookies & Pastries",
-    url: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Iced Drinks & Coffee",
-    url: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Beaded Crafts & Keychains",
-    url: "https://images.unsplash.com/photo-1611591475152-4770281b3799?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Handcrafted Tote Bags",
-    url: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Campus Stickers & Decals",
-    url: "https://images.unsplash.com/photo-1572375992501-4b0892d50c69?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Study Reviewers & Binders",
-    url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Club Apparel & Merch",
-    url: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Bento Snacks & Meals",
-    url: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
-  },
-];
-
 export function ProductFormModal({
   open,
   onOpenChange,
@@ -102,9 +69,35 @@ export function ProductFormModal({
   const [status, setStatus] = useState<"ACTIVE" | "DRAFT">("ACTIVE");
   const [description, setDescription] = useState("");
   const [imageUrl, setImageUrl] = useState("");
-  const [showCustomUrlInput, setShowCustomUrlInput] = useState(false);
   const [isPending, setIsPending] = useState(false);
   const [state, setState] = useState<ActionState>({});
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileChange = (file: File) => {
+    setUploadError(null);
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please upload a valid image file (PNG, JPG, WEBP).");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError("Image is too large. Maximum file size is 8MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setImageUrl(reader.result);
+      }
+    };
+    reader.onerror = () => {
+      setUploadError("Failed to read image file.");
+    };
+    reader.readAsDataURL(file);
+  };
 
   useEffect(() => {
     if (productToEdit) {
@@ -116,7 +109,6 @@ export function ProductFormModal({
       setStatus(productToEdit.status === "DRAFT" ? "DRAFT" : "ACTIVE");
       setDescription(productToEdit.description || "");
       setImageUrl(productToEdit.image_url || "");
-      setShowCustomUrlInput(!PRESET_PRODUCT_IMAGES.some((p) => p.url === productToEdit.image_url));
     } else {
       setTitle("");
       setCategoryId(categories[0]?.id || "");
@@ -125,8 +117,7 @@ export function ProductFormModal({
       setPrepTimeMinutes(0);
       setStatus("ACTIVE");
       setDescription("");
-      setImageUrl(PRESET_PRODUCT_IMAGES[0]?.url || "");
-      setShowCustomUrlInput(false);
+      setImageUrl("");
     }
     setState({});
   }, [productToEdit, categories, open]);
@@ -277,95 +268,108 @@ export function ProductFormModal({
             )}
           </div>
 
-          {/* 2. Photo Showcase & Preset Selector */}
-          <div className="flex flex-col gap-3">
-            <div className="relative h-44 sm:h-52 w-full overflow-hidden rounded-2xl border border-line bg-paper-deep shadow-inner">
-              {imageUrl ? (
+          {/* 2. Photo Upload & Preview */}
+          <div className="flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-bold text-ink">
+                Product Cover Photo
+              </Label>
+              {imageUrl && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold text-kita-green">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Photo attached</span>
+                </span>
+              )}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileChange(file);
+              }}
+            />
+
+            {imageUrl ? (
+              <div className="relative h-44 sm:h-52 w-full overflow-hidden rounded-2xl border border-line bg-paper-deep shadow-inner group">
                 <Image
                   src={imageUrl}
                   alt="Product cover"
                   fill
                   className="object-cover"
                 />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-xs text-muted">
-                  No image selected
-                </div>
-              )}
 
-              {/* Tag overlay */}
-              {selectedCategory && (
-                <div className="absolute top-3 left-3 rounded-xl bg-surface/90 px-3 py-1 text-xs font-bold text-ink shadow-sm backdrop-blur-md">
-                  {selectedCategory.icon ? `${selectedCategory.icon} ` : ""}
-                  {selectedCategory.name}
-                </div>
-              )}
+                {/* Tag overlay */}
+                {selectedCategory && (
+                  <div className="absolute top-3 left-3 rounded-xl bg-surface/90 px-3 py-1 text-xs font-bold text-ink shadow-sm backdrop-blur-md">
+                    {selectedCategory.icon ? `${selectedCategory.icon} ` : ""}
+                    {selectedCategory.name}
+                  </div>
+                )}
 
-              {/* Custom URL Trigger button */}
-              <button
-                type="button"
-                onClick={() => setShowCustomUrlInput(!showCustomUrlInput)}
-                className="absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-xl bg-surface/90 px-3 py-1.5 text-xs font-semibold text-ink shadow-sm backdrop-blur-md hover:bg-surface hover:text-kita-green transition-colors"
+                {/* Change/Remove Action Buttons */}
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-surface/90 px-3 py-1.5 text-xs font-semibold text-ink shadow-sm backdrop-blur-md hover:bg-surface hover:text-kita-green transition-colors"
+                  >
+                    <ImagePlus className="h-3.5 w-3.5 text-kita-green" />
+                    <span>Change</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setImageUrl("")}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-surface/90 px-3 py-1.5 text-xs font-semibold text-destructive shadow-sm backdrop-blur-md hover:bg-surface hover:text-destructive transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingFile(true);
+                }}
+                onDragLeave={() => setIsDraggingFile(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingFile(false);
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleFileChange(file);
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex flex-col items-center justify-center gap-2 p-6 sm:p-7 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center ${
+                  isDraggingFile
+                    ? "border-kita-green bg-kita-green-soft scale-[0.99]"
+                    : "border-line bg-paper/60 hover:bg-paper hover:border-kita-green/50"
+                }`}
               >
-                <LinkIcon className="h-3.5 w-3.5" />
-                <span>{showCustomUrlInput ? "Hide URL" : "Custom URL"}</span>
-              </button>
-            </div>
-
-            {/* Custom URL Input Field (expandable) */}
-            {showCustomUrlInput && (
-              <div className="flex flex-col gap-1">
-                <Label htmlFor="prod-image" className="text-xs font-semibold text-muted">
-                  Paste Direct Image URL
-                </Label>
-                <Input
-                  id="prod-image"
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="https://..."
-                  className="h-10 rounded-xl text-xs bg-paper border-line"
-                />
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-surface border border-line text-kita-green shadow-sm">
+                  <UploadCloud className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs sm:text-sm font-bold text-ink">
+                    Click to upload photo or drag &amp; drop
+                  </span>
+                  <span className="text-[11px] text-muted">
+                    PNG, JPG, or WEBP (Max 8MB)
+                  </span>
+                </div>
               </div>
             )}
 
-            {/* Horizontal Preset Swatches */}
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-semibold text-muted">
-                Sample photos:
-              </span>
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {PRESET_PRODUCT_IMAGES.map((preset) => {
-                  const isSelected = imageUrl === preset.url;
-                  return (
-                    <button
-                      key={preset.label}
-                      type="button"
-                      onClick={() => {
-                        setImageUrl(preset.url);
-                        setShowCustomUrlInput(false);
-                      }}
-                      className={`group relative flex items-center gap-2 rounded-xl border p-1.5 pr-3 text-xs font-semibold transition-all flex-shrink-0 ${
-                        isSelected
-                          ? "border-kita-green bg-kita-green-soft text-kita-green shadow-sm"
-                          : "border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep"
-                      }`}
-                    >
-                      <div className="relative h-7 w-7 flex-shrink-0 overflow-hidden rounded-lg">
-                        <Image
-                          src={preset.url}
-                          alt={preset.label}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <span>{preset.label}</span>
-                      {isSelected && <Check className="h-3 w-3 text-kita-green" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {uploadError && (
+              <p className="text-xs text-destructive flex items-center gap-1 mt-0.5">
+                <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                <span>{uploadError}</span>
+              </p>
+            )}
           </div>
 
           {/* 3. Core Numbers: Price, Stock, Category */}

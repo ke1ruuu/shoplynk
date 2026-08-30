@@ -12,7 +12,6 @@ import {
   CheckCircle2,
   AlertCircle,
   Loader2,
-  Link as LinkIcon,
   Check,
   Eye,
   Sparkles,
@@ -20,6 +19,9 @@ import {
   Clock,
   Layers,
   Store,
+  UploadCloud,
+  ImagePlus,
+  Trash2,
 } from "lucide-react";
 import { createProductAction, updateProductAction, ActionState } from "@/app/actions/seller";
 
@@ -48,41 +50,6 @@ interface ProductEditorViewProps {
   storeName?: string;
 }
 
-const PRESET_PRODUCT_IMAGES = [
-  {
-    label: "Pastries & Treats",
-    url: "https://images.unsplash.com/photo-1499636136210-6f4ee915583e?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Coffee & Drinks",
-    url: "https://images.unsplash.com/photo-1517701550927-30cf4ba1dba5?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Beaded Charms",
-    url: "https://images.unsplash.com/photo-1611591475152-4770281b3799?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Tote Bags",
-    url: "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Stickers & Decals",
-    url: "https://images.unsplash.com/photo-1572375992501-4b0892d50c69?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Study Reviewers",
-    url: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Club Apparel",
-    url: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=800&q=80",
-  },
-  {
-    label: "Bento Meals",
-    url: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
-  },
-];
-
 export function ProductEditorView({
   categories,
   productToEdit,
@@ -104,14 +71,36 @@ export function ProductEditorView({
     productToEdit?.status === "DRAFT" ? "DRAFT" : "ACTIVE"
   );
   const [description, setDescription] = useState(productToEdit?.description || "");
-  const [imageUrl, setImageUrl] = useState(
-    productToEdit?.image_url || PRESET_PRODUCT_IMAGES[0]?.url || ""
-  );
-  const [showCustomUrlInput, setShowCustomUrlInput] = useState(
-    !PRESET_PRODUCT_IMAGES.some((p) => p.url === productToEdit?.image_url)
-  );
+  const [imageUrl, setImageUrl] = useState(productToEdit?.image_url || "");
   const [isPending, setIsPending] = useState(false);
   const [state, setState] = useState<ActionState>({});
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  const handleFileChange = (file: File) => {
+    setUploadError(null);
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please upload a valid image file (PNG, JPG, WEBP).");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError("Image is too large. Maximum file size is 8MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setImageUrl(reader.result);
+      }
+    };
+    reader.onerror = () => {
+      setUploadError("Failed to read image file.");
+    };
+    reader.readAsDataURL(file);
+  };
 
   const handleSubmit = useCallback(
     async (e?: React.FormEvent<HTMLFormElement>) => {
@@ -249,65 +238,107 @@ export function ProductEditorView({
               />
             </div>
 
-            {/* 2. Cover Photo Preset Rail */}
+            {/* 2. Cover Photo Upload Zone */}
             <div className="p-5 sm:p-6 flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <span className="eyebrow text-xs text-muted">Cover Photo</span>
-                <button
-                  type="button"
-                  onClick={() => setShowCustomUrlInput(!showCustomUrlInput)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-kita-green hover:underline"
-                >
-                  <LinkIcon className="h-3 w-3" />
-                  <span>{showCustomUrlInput ? "Use Presets" : "Custom URL"}</span>
-                </button>
+                {imageUrl && (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-kita-green">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    <span>Photo ready</span>
+                  </span>
+                )}
               </div>
 
-              {showCustomUrlInput ? (
-                <Input
-                  id="prod-image"
-                  type="url"
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  placeholder="Paste image URL (https://...)"
-                  className="h-9 rounded-xl text-xs bg-paper border-line"
-                />
-              ) : (
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-none">
-                  {PRESET_PRODUCT_IMAGES.map((preset) => {
-                    const isSelected = imageUrl === preset.url;
-                    return (
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileChange(file);
+                }}
+              />
+
+              {imageUrl ? (
+                /* Uploaded Photo Preview & Action Bar */
+                <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl border border-line bg-paper">
+                  <div className="relative h-24 w-28 sm:h-20 sm:w-24 flex-shrink-0 overflow-hidden rounded-xl bg-paper-deep border border-line shadow-sm">
+                    <Image
+                      src={imageUrl}
+                      alt="Uploaded preview"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col items-center sm:items-start gap-1 text-center sm:text-left">
+                    <span className="text-xs font-bold text-ink">
+                      Product Photo Uploaded
+                    </span>
+                    <span className="text-[11px] text-muted">
+                      Your photo is ready for the campus marketplace preview.
+                    </span>
+                    <div className="flex items-center gap-2 mt-2">
                       <button
-                        key={preset.label}
                         type="button"
-                        onClick={() => {
-                          setImageUrl(preset.url);
-                          setShowCustomUrlInput(false);
-                        }}
-                        className={`group flex items-center gap-2 rounded-xl border px-2.5 py-1.5 flex-shrink-0 text-left transition-all ${
-                          isSelected
-                            ? "border-kita-green bg-kita-green-soft text-kita-green font-bold shadow-sm ring-1 ring-kita-green/40"
-                            : "border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep"
-                        }`}
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-surface border border-line px-3 py-1.5 text-xs font-semibold text-ink shadow-sm hover:bg-paper-deep transition-colors"
                       >
-                        <div className="relative h-6 w-6 flex-shrink-0 overflow-hidden rounded-md bg-paper-deep">
-                          <Image
-                            src={preset.url}
-                            alt={preset.label}
-                            fill
-                            className="object-cover"
-                          />
-                          {isSelected && (
-                            <div className="absolute inset-0 bg-kita-green/40 flex items-center justify-center text-white">
-                              <Check className="h-3 w-3" />
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-xs whitespace-nowrap">{preset.label}</span>
+                        <ImagePlus className="h-3.5 w-3.5 text-kita-green" />
+                        <span>Change Photo</span>
                       </button>
-                    );
-                  })}
+                      <button
+                        type="button"
+                        onClick={() => setImageUrl("")}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Remove</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                /* Empty State Upload Dropzone */
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDraggingFile(true);
+                  }}
+                  onDragLeave={() => setIsDraggingFile(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setIsDraggingFile(false);
+                    const file = e.dataTransfer.files?.[0];
+                    if (file) handleFileChange(file);
+                  }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className={`flex flex-col items-center justify-center gap-2.5 p-6 sm:p-8 rounded-2xl border-2 border-dashed transition-all cursor-pointer text-center ${
+                    isDraggingFile
+                      ? "border-kita-green bg-kita-green-soft scale-[0.99]"
+                      : "border-line bg-paper/60 hover:bg-paper hover:border-kita-green/50"
+                  }`}
+                >
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface border border-line text-kita-green shadow-sm">
+                    <UploadCloud className="h-6 w-6" />
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs sm:text-sm font-bold text-ink">
+                      Click to upload photo, or drag and drop
+                    </span>
+                    <span className="text-[11px] text-muted">
+                      PNG, JPG, or WEBP (Max 8MB)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {uploadError && (
+                <p className="text-xs text-destructive flex items-center gap-1 mt-1">
+                  <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                  <span>{uploadError}</span>
+                </p>
               )}
             </div>
 

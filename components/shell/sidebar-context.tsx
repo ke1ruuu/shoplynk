@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface SidebarContextValue {
   collapsed: boolean;
+  setCollapsed: (collapsed: boolean | ((prev: boolean) => boolean)) => void;
   toggleCollapsed: () => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
@@ -31,9 +32,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  function toggleCollapsed() {
+  function handleSetCollapsed(value: boolean | ((prev: boolean) => boolean)) {
     setCollapsed((prev) => {
-      const next = !prev;
+      const next = typeof value === "function" ? value(prev) : value;
       try {
         localStorage.setItem(STORAGE_KEY, next ? "true" : "false");
       } catch {
@@ -43,8 +44,20 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
     });
   }
 
+  function toggleCollapsed() {
+    handleSetCollapsed((prev) => !prev);
+  }
+
   return (
-    <SidebarContext.Provider value={{ collapsed, toggleCollapsed, mobileOpen, setMobileOpen }}>
+    <SidebarContext.Provider
+      value={{
+        collapsed,
+        setCollapsed: handleSetCollapsed,
+        toggleCollapsed,
+        mobileOpen,
+        setMobileOpen,
+      }}
+    >
       {children}
     </SidebarContext.Provider>
   );

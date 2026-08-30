@@ -19,31 +19,28 @@ const TESTIMONIALS: Testimonial[] = [
     id: "1",
     quote:
       "LYNK helped me turn my hobby into a small business. I've met so many amazing people in our school!",
-    author: "Jillian Reyes",
+    author: "Jillian Castro",
     role: "Student Seller",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+    avatarUrl: "/Jhillian.png",
     tilt: "-rotate-2",
   },
   {
     id: "2",
     quote:
       "It's so easy to find what I need while supporting my fellow students and faculty. Love this platform!",
-    author: "Andre Castillo",
+    author: "Lael Aguisanda",
     role: "Student Buyer",
-    avatarUrl:
-      "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80",
+    avatarUrl: "/Lael.png",
     tilt: "rotate-1",
   },
   {
     id: "3",
     quote:
       "A great initiative that empowers our students and encourages entrepreneurship.",
-    author: "Prof. Anna Lim",
+    author: "Prof. Kathleen Micua",
     role: "Faculty Seller",
     isFaculty: true,
-    avatarUrl:
-      "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
+    avatarUrl: "/Kath.png",
     tilt: "-rotate-1",
   },
 ];
@@ -70,11 +67,10 @@ export function TestimonialsSection() {
                 type="button"
                 onClick={() => setActiveIndex(idx)}
                 aria-pressed={isActive}
-                className={`relative text-left bg-surface rounded-2xl p-6 border transition-all duration-300 flex flex-col justify-between ${t.tilt} ${
-                  isActive
-                    ? "border-kita-green/40 shadow-flyer-lg -translate-y-1.5 !rotate-0"
-                    : "border-line shadow-flyer hover:-translate-y-1 hover:!rotate-0"
-                }`}
+                className={`relative text-left bg-surface rounded-2xl p-6 border transition-all duration-300 flex flex-col justify-between ${t.tilt} ${isActive
+                  ? "border-kita-green/40 shadow-flyer-lg -translate-y-1.5 !rotate-0"
+                  : "border-line shadow-flyer hover:-translate-y-1 hover:!rotate-0"
+                  }`}
               >
                 <span
                   className="pin left-1/2 -translate-x-1/2 -top-1.5"
@@ -111,9 +107,8 @@ export function TestimonialsSection() {
               type="button"
               onClick={() => setActiveIndex(idx)}
               aria-label={`Show testimonial ${idx + 1}`}
-              className={`h-2.5 rounded-full transition-all ${
-                activeIndex === idx ? "bg-kita-green w-6" : "bg-line-strong w-2.5 hover:bg-muted"
-              }`}
+              className={`h-2.5 rounded-full transition-all ${activeIndex === idx ? "bg-kita-green w-6" : "bg-line-strong w-2.5 hover:bg-muted"
+                }`}
             />
           ))}
         </div>

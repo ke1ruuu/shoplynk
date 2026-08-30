@@ -41,7 +41,7 @@ export function AuthBrandPanel() {
       </div>
 
       <div className="relative z-10">
-        <Logo size="md" tone="dark" />
+        <Logo size="lg" tone="dark" />
       </div>
 
       <div className="relative z-10 flex flex-col gap-8">

@@ -55,10 +55,50 @@ interface AppSidebarProps {
 export function AppSidebar({ user, profile }: AppSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const { collapsed, toggleCollapsed, mobileOpen, setMobileOpen } =
+  const { collapsed, setCollapsed, toggleCollapsed, mobileOpen, setMobileOpen } =
     useSidebar();
   const [isPending, startTransition] = useTransition();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullOffset, setPullOffset] = useState(0);
+  const dragStartXRef = React.useRef<number | null>(null);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (!isCollapsedView) return;
+    dragStartXRef.current = e.clientX;
+    setIsPulling(true);
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isPulling || dragStartXRef.current === null || !isCollapsedView) return;
+    const deltaX = e.clientX - dragStartXRef.current;
+    if (deltaX > 0) {
+      setPullOffset(Math.min(deltaX, 176));
+    }
+    if (deltaX > 35) {
+      setCollapsed(false);
+      setIsPulling(false);
+      setPullOffset(0);
+      dragStartXRef.current = null;
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    if (isPulling) {
+      if (isCollapsedView && pullOffset > 20) {
+        setCollapsed(false);
+      }
+      setIsPulling(false);
+      setPullOffset(0);
+      dragStartXRef.current = null;
+      try {
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+  };
 
   function handleLogout() {
     startTransition(async () => {
@@ -133,44 +173,61 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
         />
       )}
 
-      {/* Sidebar Container */}
+      {/* Sidebar Container with interactive pull edge */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-line bg-surface transition-all duration-300 ease-out ${
-          mobileOpen
-            ? "translate-x-0 w-72"
-            : "-translate-x-full lg:translate-x-0"
-        } ${isCollapsedView ? "lg:w-20" : "lg:w-64"}`}
+        style={{
+          width: isPulling
+            ? `${(isCollapsedView ? 80 : 256) + pullOffset}px`
+            : undefined,
+        }}
+        className={`fixed inset-y-0 left-0 z-50 flex flex-col justify-between border-r border-line bg-surface ${
+          isPulling ? "transition-none select-none" : "transition-all duration-300 ease-out"
+        } ${
+          mobileOpen ? "translate-x-0 w-72" : "-translate-x-full lg:translate-x-0"
+        } ${isCollapsedView && !isPulling ? "lg:w-20" : (!isPulling ? "lg:w-64" : "")}`}
       >
+        {/* Pull / Drag Handle on the right edge (only active when collapsed) */}
+        {isCollapsedView && (
+          <div
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            className="hidden lg:flex absolute top-0 -right-3 bottom-0 w-6 cursor-ew-resize items-center justify-center group z-50 touch-none select-none"
+            title="Pull right to expand sidebar"
+            aria-label="Pull right to expand sidebar"
+          >
+            <div
+              className={`h-16 w-1 rounded-full transition-all duration-200 ${
+                isPulling
+                  ? "bg-kita-green scale-y-125 shadow-md w-1.5"
+                  : "bg-line group-hover:bg-kita-green/70 group-hover:scale-y-110 group-hover:w-1.5"
+              }`}
+            />
+          </div>
+        )}
+
         {/* Top Header */}
         <div
           className={`flex flex-col border-b border-line ${isCollapsedView ? "p-3 items-center" : "p-4 gap-3"}`}
         >
           {isCollapsedView ? (
-            /* Collapsed Header: LYNK Logo linking to /protected + expand button */
-            <div className="flex flex-col items-center gap-2">
+            /* Collapsed Header: Clean LYNK Logo linking to /protected (no expand icon button) */
+            <div className="flex items-center justify-center p-1">
               <Link
                 href={isAdmin ? "/admin" : "/protected"}
-                className="flex h-10 w-10 items-center justify-center rounded-xl p-1 transition-transform hover:scale-105"
+                className="flex h-12 w-12 items-center justify-center rounded-xl p-0.5 transition-transform hover:scale-105"
                 title="Go to Dashboard"
                 aria-label="Go to Dashboard"
               >
                 <Image
                   src="/LYNKICON.png"
                   alt="LYNK Logo"
-                  width={36}
-                  height={36}
+                  width={44}
+                  height={44}
                   className="h-full w-auto object-contain"
                 />
               </Link>
-              <button
-                type="button"
-                onClick={toggleCollapsed}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep focus-visible:outline-kita-green transition-colors"
-                title="Expand sidebar"
-                aria-label="Expand sidebar"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
             </div>
           ) : (
             /* Expanded Header: Logo and Collapse Button */
