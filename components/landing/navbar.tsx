@@ -2,13 +2,24 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { Logo } from "@/components/common/logo";
 
 export function Navbar() {
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("home");
+
+  const isAboutPage = pathname === "/about";
+  const isHomePage = pathname === "/" || pathname === "";
+
+  const currentActive = isAboutPage
+    ? "about"
+    : isHomePage
+    ? activeSection
+    : "";
 
   const navLinks = [
     { label: "Home", href: "/#home", id: "home" },
@@ -27,15 +38,17 @@ export function Navbar() {
           const scrollPos = window.scrollY;
           setIsScrolled(scrollPos > 40);
 
-          // Scroll spy for active sections
-          const sections = ["home", "marketplace", "how-it-works", "for-sellers"];
-          for (const sectionId of [...sections].reverse()) {
-            const el = document.getElementById(sectionId);
-            if (el) {
-              const rect = el.getBoundingClientRect();
-              if (rect.top <= 240) {
-                setActiveSection(sectionId);
-                break;
+          // Scroll spy for active sections on home page only
+          if (isHomePage) {
+            const sections = ["home", "marketplace", "how-it-works", "for-sellers"];
+            for (const sectionId of [...sections].reverse()) {
+              const el = document.getElementById(sectionId);
+              if (el) {
+                const rect = el.getBoundingClientRect();
+                if (rect.top <= 240) {
+                  setActiveSection(sectionId);
+                  break;
+                }
               }
             }
           }
@@ -49,7 +62,7 @@ export function Navbar() {
     handleScroll();
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isHomePage]);
 
   return (
     <>
@@ -82,12 +95,16 @@ export function Navbar() {
             {/* Desktop Navigation Links — Generous, Uncompressed Spacing */}
             <nav className="hidden md:flex items-center gap-1.5 lg:gap-2">
               {navLinks.map((link) => {
-                const isActive = activeSection === link.id;
+                const isActive = currentActive === link.id;
                 return (
                   <Link
                     key={link.id}
                     href={link.href}
-                    onClick={() => setActiveSection(link.id)}
+                    onClick={() => {
+                      if (link.id !== "about") {
+                        setActiveSection(link.id);
+                      }
+                    }}
                     aria-current={isActive ? "page" : undefined}
                     className={`whitespace-nowrap px-3.5 py-1.5 text-sm font-medium rounded-full transition-all duration-300 ${
                       isActive
@@ -138,23 +155,28 @@ export function Navbar() {
               }`}
             >
               <nav className="flex flex-col gap-1">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.id}
-                    href={link.href}
-                    onClick={() => {
-                      setActiveSection(link.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`py-2 px-3 rounded-xl text-sm font-semibold transition-colors ${
-                      activeSection === link.id
-                        ? "bg-kita-green text-white"
-                        : "text-muted hover:bg-paper-deep hover:text-ink"
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {navLinks.map((link) => {
+                  const isActive = currentActive === link.id;
+                  return (
+                    <Link
+                      key={link.id}
+                      href={link.href}
+                      onClick={() => {
+                        if (link.id !== "about") {
+                          setActiveSection(link.id);
+                        }
+                        setMobileMenuOpen(false);
+                      }}
+                      className={`py-2 px-3 rounded-xl text-sm font-semibold transition-colors ${
+                        isActive
+                          ? "bg-kita-green text-white"
+                          : "text-muted hover:bg-paper-deep hover:text-ink"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  );
+                })}
               </nav>
               <div className="pt-2 border-t border-line flex flex-col gap-2">
                 <Link
