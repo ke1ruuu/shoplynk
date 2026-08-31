@@ -14,8 +14,6 @@ import {
   Search,
   Sparkles,
   ExternalLink,
-  Calendar,
-  Building,
   School,
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
@@ -137,18 +135,6 @@ export function LegalShell({ initialTab = "terms" }: LegalShellProps) {
                   : "How LYNK collects, protects, and handles personal student information under the Philippine Data Privacy Act of 2012 (RA 10173)."}
               </p>
 
-              {/* Metadata Badges */}
-              <div className="flex flex-wrap items-center gap-y-2 gap-x-4 pt-2 text-xs text-muted">
-                <span className="inline-flex items-center gap-1.5 font-mono">
-                  <Calendar className="w-3.5 h-3.5 text-kita-green" /> Last Updated: March 2026
-                </span>
-                <span className="inline-flex items-center gap-1.5 font-mono">
-                  <Building className="w-3.5 h-3.5 text-spark-ink" /> Version 2.1 · General Trias, Cavite
-                </span>
-                <span className="inline-flex items-center gap-1.5 font-mono text-kita-green font-semibold">
-                  <Shield className="w-3.5 h-3.5" /> DepEd & NPC Compliant
-                </span>
-              </div>
             </div>
 
             {/* Quick Action Tools */}

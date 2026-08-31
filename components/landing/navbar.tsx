@@ -18,8 +18,8 @@ export function Navbar() {
   const currentActive = isAboutPage
     ? "about"
     : isHomePage
-    ? activeSection
-    : "";
+      ? activeSection
+      : "";
 
   const navLinks = [
     { label: "Home", href: "/#home", id: "home" },
@@ -68,22 +68,19 @@ export function Navbar() {
     <>
       {/* Outer Floating Wrapper Container */}
       <div
-        className={`fixed top-0 inset-x-0 z-50 pointer-events-none flex justify-center transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] ${
-          isScrolled ? "pt-3 sm:pt-4 px-3 sm:px-6" : "pt-0 px-0"
-        }`}
+        className={`fixed top-0 inset-x-0 z-50 pointer-events-none flex justify-center transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] ${isScrolled ? "pt-3 sm:pt-4 px-3 sm:px-6" : "pt-0 px-0"
+          }`}
       >
         {/* Inner Morphing Navigation Bar */}
         <header
-          className={`pointer-events-auto w-full transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-center ${
-            isScrolled
-              ? "max-w-5xl rounded-full bg-paper/90 backdrop-blur-xl border border-line shadow-lg shadow-ink/5 px-4 sm:px-6 py-2.5"
-              : "max-w-full bg-paper/85 backdrop-blur-md border-b border-line px-4 sm:px-6 lg:px-8 py-3.5"
-          }`}
+          className={`pointer-events-auto w-full transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] flex flex-col justify-center ${isScrolled
+            ? "max-w-5xl rounded-full bg-paper/90 backdrop-blur-xl border border-line shadow-lg shadow-ink/5 px-4 sm:px-6 py-2.5"
+            : "max-w-full bg-paper/85 backdrop-blur-md border-b border-line px-4 sm:px-6 lg:px-8 py-3.5"
+            }`}
         >
           <div
-            className={`w-full mx-auto flex items-center justify-between transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] ${
-              isScrolled ? "max-w-5xl h-10" : "max-w-[1280px] h-12"
-            }`}
+            className={`w-full mx-auto flex items-center justify-between transition-all duration-500 [transition-timing-function:cubic-bezier(0.16,1,0.3,1)] ${isScrolled ? "max-w-5xl h-10" : "max-w-[1280px] h-12"
+              }`}
           >
             {/* Brand Logo */}
             <Logo
@@ -106,11 +103,10 @@ export function Navbar() {
                       }
                     }}
                     aria-current={isActive ? "page" : undefined}
-                    className={`whitespace-nowrap px-3.5 py-1.5 text-sm font-medium rounded-full transition-all duration-300 ${
-                      isActive
-                        ? "text-white bg-kita-green shadow-xs font-semibold"
-                        : "text-muted hover:text-ink hover:bg-paper-deep"
-                    }`}
+                    className={`whitespace-nowrap px-3.5 py-1.5 text-sm font-medium rounded-full transition-all duration-300 ${isActive
+                      ? "text-white bg-kita-green shadow-xs font-semibold"
+                      : "text-muted hover:text-ink hover:bg-paper-deep"
+                      }`}
                   >
                     {link.label}
                   </Link>
@@ -150,9 +146,8 @@ export function Navbar() {
           {/* Mobile Menu Drawer */}
           {mobileMenuOpen && (
             <div
-              className={`md:hidden mt-3 pt-3 border-t border-line bg-paper/95 backdrop-blur-xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200 ${
-                isScrolled ? "rounded-2xl p-4 shadow-xl border" : "px-2 pb-4"
-              }`}
+              className={`md:hidden mt-3 pt-3 border-t border-line bg-paper/95 backdrop-blur-xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2 duration-200 ${isScrolled ? "rounded-2xl p-4 shadow-xl border" : "px-2 pb-4"
+                }`}
             >
               <nav className="flex flex-col gap-1">
                 {navLinks.map((link) => {
@@ -167,11 +162,10 @@ export function Navbar() {
                         }
                         setMobileMenuOpen(false);
                       }}
-                      className={`py-2 px-3 rounded-xl text-sm font-semibold transition-colors ${
-                        isActive
-                          ? "bg-kita-green text-white"
-                          : "text-muted hover:bg-paper-deep hover:text-ink"
-                      }`}
+                      className={`py-2 px-3 rounded-xl text-sm font-semibold transition-colors ${isActive
+                        ? "bg-kita-green text-white"
+                        : "text-muted hover:bg-paper-deep hover:text-ink"
+                        }`}
                     >
                       {link.label}
                     </Link>
