@@ -22,6 +22,11 @@ import {
   QrCode,
   Receipt,
   Wallet,
+  UploadCloud,
+  Camera,
+  Trash2,
+  ImagePlus,
+  RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +39,6 @@ const STRANDS = [
   "STEM (Science, Technology, Engineering & Mathematics)",
   "ABM (Accountancy, Business & Management)",
   "HUMSS (Humanities & Social Sciences)",
-  "GAS (General Academic Strand)",
   "TVL - ICT (Information & Communications Tech)",
   "TVL - HE (Home Economics)",
   "TVL - IA (Industrial Arts)",
@@ -63,12 +67,88 @@ export function VerificationForm({
   const [step1Error, setStep1Error] = useState("");
   const [step3Error, setStep3Error] = useState("");
 
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const receiptFileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [fileSize, setFileSize] = useState("");
+  const [isDragging, setIsDragging] = useState(false);
+  const [receiptFileName, setReceiptFileName] = useState("");
+
   const [state, formAction, isPending] = useActionState<
     VerificationActionState,
     FormData
   >(submitSellerVerificationAction, {});
 
   const getFieldError = (field: string) => state.errors?.[field]?.[0];
+
+  const handleFileProcess = (file: File) => {
+    setStep3Error("");
+    if (!file.type.startsWith("image/")) {
+      setStep3Error("Please upload a valid image file (PNG, JPG, JPEG, WEBP).");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setStep3Error("The image is too large. Maximum file size is 10MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setIdImageUrl(reader.result);
+        setFileName(file.name);
+        setFileSize(
+          file.size < 1024 * 1024
+            ? `${(file.size / 1024).toFixed(1)} KB`
+            : `${(file.size / (1024 * 1024)).toFixed(2)} MB`
+        );
+        setStep3Error("");
+      }
+    };
+    reader.onerror = () => {
+      setStep3Error("Failed to read image file. Please try again.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileProcess(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      handleFileProcess(file);
+    }
+  };
+
+  const handleRemovePhoto = () => {
+    setIdImageUrl("");
+    setFileName("");
+    setFileSize("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const handleReceiptFileProcess = (file: File) => {
+    if (!file.type.startsWith("image/")) return;
+    if (file.size > 10 * 1024 * 1024) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setPaymentReceiptUrl(reader.result);
+        setReceiptFileName(file.name);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   function handleBack() {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -93,7 +173,11 @@ export function VerificationForm({
 
   function handleProceedToStep4() {
     if (!idImageUrl.trim()) {
-      setStep3Error("Please provide a photo URL of your School ID or Certificate of Registration.");
+      setStep3Error(
+        docType === "id"
+          ? "Please upload a photo of your Student ID."
+          : "Please upload a photo of your Certificate of Registration (COR)."
+      );
       return;
     }
     setStep3Error("");
@@ -549,37 +633,26 @@ export function VerificationForm({
                   </button>
                 </div>
 
-                {/* Photo URL Input */}
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="step3-image" className="text-xs font-bold text-ink">
-                    {docType === "id" ? "Student ID Photo URL" : "COR Document URL"}{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="step3-image"
-                    value={idImageUrl}
-                    onChange={(e) => {
-                      setIdImageUrl(e.target.value);
-                      if (step3Error) setStep3Error("");
-                    }}
-                    placeholder="https://..."
-                    required
-                    className="h-11 rounded-xl font-mono text-xs bg-paper border-line focus:bg-surface transition-colors"
-                  />
-                  {getFieldError("idImageUrl") && (
-                    <p className="text-xs text-destructive">{getFieldError("idImageUrl")}</p>
-                  )}
-                </div>
+                {/* Hidden File Input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
 
-                {/* Scanner Frame Preview */}
-                <div className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-line bg-paper/60 p-6 transition-all">
-                  {idImageUrl ? (
-                    <div className="relative h-64 sm:h-72 w-full overflow-hidden rounded-xl bg-surface shadow-xs border border-line">
+                {/* Upload or Preview Display */}
+                {idImageUrl ? (
+                  <div className="flex flex-col gap-3">
+                    {/* Scanner Frame Preview */}
+                    <div className="relative h-64 sm:h-80 w-full overflow-hidden rounded-2xl bg-surface shadow-xs border-2 border-line">
                       <Image
                         src={idImageUrl}
-                        alt="Student ID card preview"
+                        alt="Student credential preview"
                         fill
-                        className="object-contain p-2"
+                        unoptimized
+                        className="object-contain p-3"
                       />
                       {/* Scanner Corner Guides */}
                       <div className="absolute top-3 left-3 h-5 w-5 border-t-2 border-l-2 border-kita-green" />
@@ -587,29 +660,97 @@ export function VerificationForm({
                       <div className="absolute bottom-3 left-3 h-5 w-5 border-b-2 border-l-2 border-kita-green" />
                       <div className="absolute bottom-3 right-3 h-5 w-5 border-b-2 border-r-2 border-kita-green" />
 
-                      <div className="absolute top-3 left-10 inline-flex items-center gap-1.5 rounded-lg bg-surface/90 backdrop-blur-md px-2.5 py-1 text-xs font-bold text-ink border border-line shadow-xs">
+                      <div className="absolute top-3 left-10 inline-flex items-center gap-1.5 rounded-lg bg-surface/95 backdrop-blur-md px-3 py-1.5 text-xs font-bold text-ink border border-line shadow-xs">
                         <CheckCircle2 className="h-3.5 w-3.5 text-kita-green" />
-                        <span>Document Attached &amp; Legible</span>
+                        <span>Document Photo Attached &amp; Ready</span>
                       </div>
                     </div>
-                  ) : (
-                    <div className="flex flex-col items-center gap-3 py-6 text-center max-w-sm">
-                      <div className="h-12 w-12 rounded-full bg-surface border border-line flex items-center justify-center text-muted shadow-xs">
-                        <IdCard className="h-6 w-6 text-kita-green" />
+
+                    {/* File Information & Action Bar */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3.5 rounded-xl border border-line bg-paper text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-8 w-8 rounded-lg bg-surface border border-line flex items-center justify-center text-kita-green flex-shrink-0">
+                          <IdCard className="h-4 w-4" />
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-ink truncate max-w-[220px] sm:max-w-xs">
+                            {fileName || (docType === "id" ? "Student_ID_Photo.jpg" : "COR_Document.jpg")}
+                          </span>
+                          {fileSize && <span className="text-[11px] text-muted">{fileSize}</span>}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto justify-end">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line bg-surface hover:bg-paper-deep text-ink font-semibold text-xs transition-colors cursor-pointer"
+                        >
+                          <RefreshCw className="h-3.5 w-3.5 text-muted" />
+                          <span>Change Photo</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleRemovePhoto}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 text-destructive font-semibold text-xs transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Drag & Drop Upload Zone */
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                    }}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 sm:p-10 transition-all cursor-pointer group ${
+                      isDragging
+                        ? "border-kita-green bg-kita-green-soft/70 scale-[1.01]"
+                        : "border-line bg-paper/60 hover:bg-paper hover:border-line-strong"
+                    }`}
+                  >
+                    <div className="flex flex-col items-center gap-3.5 text-center max-w-md">
+                      <div className="h-14 w-14 rounded-2xl bg-surface border border-line flex items-center justify-center text-kita-green shadow-xs group-hover:scale-105 group-hover:border-kita-green/30 transition-all">
+                        <UploadCloud className="h-7 w-7 text-kita-green" />
                       </div>
                       <div className="flex flex-col gap-1">
-                        <p className="font-display text-sm font-bold text-ink">
-                          Scan or Link Document
+                        <p className="font-display text-base font-bold text-ink">
+                          Upload {docType === "id" ? "Student ID Photo" : "Certificate of Registration"}
                         </p>
                         <p className="text-xs text-muted leading-relaxed">
-                          Enter a direct link to a clear photo of your{" "}
-                          {docType === "id" ? "Student ID" : "Certificate of Registration (COR)"}.
-                          Ensure Full Name and LRN are visible.
+                          Drag and drop your document photo here, or click to browse from your device.
                         </p>
                       </div>
+
+                      <div className="pt-2 flex flex-col sm:flex-row items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fileInputRef.current?.click();
+                          }}
+                          className="inline-flex items-center gap-2 rounded-xl bg-kita-green px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-kita-green-deep transition-colors cursor-pointer"
+                        >
+                          <Camera className="h-3.5 w-3.5" />
+                          <span>Choose Photo</span>
+                        </button>
+                        <span className="text-[11px] text-muted">
+                          Supports PNG, JPG, JPEG, WEBP (Up to 10MB)
+                        </span>
+                      </div>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Step 3 Actions */}
                 <div className="flex items-center justify-between pt-4 border-t border-line">
@@ -738,18 +879,59 @@ export function VerificationForm({
                   </span>
                 </div>
 
-                {/* Payment Receipt Image URL (Optional) */}
-                <div className="flex flex-col gap-1.5">
+                {/* Payment Receipt Image (Optional) */}
+                <div className="flex flex-col gap-2">
                   <Label htmlFor="payment-proof" className="text-xs font-bold text-ink">
-                    Payment Receipt Screenshot URL <span className="text-muted">(Optional)</span>
+                    Payment Receipt Screenshot <span className="text-muted">(Optional)</span>
                   </Label>
-                  <Input
-                    id="payment-proof"
-                    value={paymentReceiptUrl}
-                    onChange={(e) => setPaymentReceiptUrl(e.target.value)}
-                    placeholder="https://..."
-                    className="h-11 rounded-xl font-mono text-xs bg-paper border-line focus:bg-surface transition-colors"
+                  <input
+                    ref={receiptFileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleReceiptFileProcess(file);
+                    }}
                   />
+                  {paymentReceiptUrl ? (
+                    <div className="flex items-center justify-between p-3 rounded-xl border border-line bg-paper text-xs">
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4 text-kita-green" />
+                        <span className="font-bold text-ink truncate max-w-xs">
+                          {receiptFileName || "Receipt_Screenshot.jpg"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => receiptFileInputRef.current?.click()}
+                          className="text-xs text-kita-green hover:underline font-semibold cursor-pointer"
+                        >
+                          Change
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPaymentReceiptUrl("");
+                            setReceiptFileName("");
+                          }}
+                          className="text-xs text-destructive hover:underline font-semibold cursor-pointer"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => receiptFileInputRef.current?.click()}
+                      className="flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 border-dashed border-line bg-paper hover:bg-paper-deep text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
+                    >
+                      <ImagePlus className="h-4 w-4 text-kita-green" />
+                      <span>Upload GCash or Official Receipt Screenshot (Optional)</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* DepEd Student Honor Pledge Checkbox */}

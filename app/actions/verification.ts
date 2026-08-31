@@ -201,3 +201,98 @@ export async function rejectVerificationAction(
   revalidatePath("/seller/verification");
   return { success: true, message: "Application marked as rejected." };
 }
+
+/**
+ * Admin Action: Revoke seller status and remove seller privileges.
+ * Downgrades profile role back to BUYER, deactivates store, and updates or deletes the verification.
+ */
+export async function removeSellerAction(
+  verificationId: string,
+  deleteRecord: boolean = false
+): Promise<{ success: boolean; message: string }> {
+  const { user, profile } = await getCurrentUserProfile();
+  if (!user || (profile?.role !== "CAMPUS_ADMIN" && profile?.role !== "PLATFORM_ADMIN")) {
+    return { success: false, message: "Unauthorized. Only campus admins can manage sellers." };
+  }
+
+  const supabase = await createClient();
+
+  // 1. Fetch verification application
+  const { data: verification, error: fetchError } = await supabase
+    .from("student_verifications")
+    .select("id, user_id")
+    .eq("id", verificationId)
+    .maybeSingle();
+
+  if (fetchError || !verification) {
+    return { success: false, message: fetchError?.message || "Verification record not found." };
+  }
+
+  const applicantId = verification.user_id;
+
+  // 2. Downgrade applicant profile role back to BUYER
+  await supabase
+    .from("profiles")
+    .update({
+      role: "BUYER",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", applicantId);
+
+  // 3. Deactivate applicant's store so products are unlisted
+  await supabase
+    .from("stores")
+    .update({
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", applicantId);
+
+  // 4. Update or Delete verification record
+  if (deleteRecord) {
+    const { error: deleteError } = await supabase
+      .from("student_verifications")
+      .delete()
+      .eq("id", verificationId);
+
+    if (deleteError) {
+      return { success: false, message: deleteError.message };
+    }
+  } else {
+    const { error: updateVerifError } = await supabase
+      .from("student_verifications")
+      .update({
+        status: "REJECTED",
+        rejection_reason: "Seller privileges were revoked by campus administration.",
+        reviewed_by: user.id,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", verificationId);
+
+    if (updateVerifError) {
+      return { success: false, message: updateVerifError.message };
+    }
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/admin/stores");
+  revalidatePath("/seller");
+  revalidatePath("/seller/verification");
+  revalidatePath("/protected/marketplace");
+  return {
+    success: true,
+    message: deleteRecord
+      ? "Seller record deleted and user downgraded to student buyer."
+      : "Seller privileges removed and store deactivated successfully.",
+  };
+}
+
+/**
+ * Admin Action: Delete a verification record entirely.
+ */
+export async function deleteVerificationAction(
+  verificationId: string
+): Promise<{ success: boolean; message: string }> {
+  return removeSellerAction(verificationId, true);
+}

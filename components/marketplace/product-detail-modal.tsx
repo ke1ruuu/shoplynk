@@ -45,8 +45,8 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
     product.images && product.images.length > 0
       ? product.images.map((img) => img.image_url)
       : [
-          "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80",
-        ];
+        "https://images.unsplash.com/photo-1544816155-12df9643f363?auto=format&fit=crop&w=600&q=80",
+      ];
 
   const currentImage = images[selectedImageIndex] || images[0];
   const isOutOfStock = product.stock <= 0;
@@ -107,11 +107,10 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                   key={idx}
                   type="button"
                   onClick={() => setSelectedImageIndex(idx)}
-                  className={`relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border transition-all ${
-                    selectedImageIndex === idx
-                      ? "border-kita-green ring-2 ring-kita-green/30 scale-105"
-                      : "border-line opacity-70 hover:opacity-100"
-                  }`}
+                  className={`relative h-14 w-14 flex-shrink-0 overflow-hidden rounded-lg border transition-all ${selectedImageIndex === idx
+                    ? "border-kita-green ring-2 ring-kita-green/30 scale-105"
+                    : "border-line opacity-70 hover:opacity-100"
+                    }`}
                 >
                   <Image
                     src={img}
@@ -131,9 +130,21 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
             {/* Store & Verification Header */}
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-kita-green text-xs font-extrabold text-white">
-                  {product.store.name.substring(0, 2).toUpperCase()}
-                </div>
+                {product.store.logo_url ? (
+                  <div className="relative h-8 w-8 rounded-lg overflow-hidden border border-line bg-paper shadow-xs flex-shrink-0">
+                    <Image
+                      src={product.store.logo_url}
+                      alt={product.store.name}
+                      fill
+                      unoptimized
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-kita-green text-xs font-extrabold text-white flex-shrink-0">
+                    {product.store.name.substring(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <div className="flex flex-col truncate">
                   <span className="font-display font-bold text-xs text-ink leading-tight truncate">
                     {product.store.name}
@@ -260,11 +271,10 @@ export function ProductDetailModal({ product, onClose }: ProductDetailModalProps
                 type="button"
                 onClick={() => product && toggleFavorite(product)}
                 aria-label={isLiked ? "Remove from favorites" : "Save to favorites"}
-                className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all ${
-                  isLiked
-                    ? "border-rose-500 bg-rose-500/10 text-rose-500"
-                    : "border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep"
-                }`}
+                className={`flex h-10 w-10 items-center justify-center rounded-xl border transition-all ${isLiked
+                  ? "border-rose-500 bg-rose-500/10 text-rose-500"
+                  : "border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep"
+                  }`}
               >
                 <Heart className={`h-4 w-4 ${isLiked ? "fill-rose-500 text-rose-500" : ""}`} />
               </button>

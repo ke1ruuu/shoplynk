@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useTransition, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -17,6 +18,10 @@ import {
   ShieldCheck,
   Power,
   ArrowLeft,
+  UploadCloud,
+  Camera,
+  Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { updateStoreAction, ActionState } from "@/app/actions/seller";
 
@@ -24,6 +29,7 @@ export interface StoreData {
   id: string;
   name: string;
   slug: string;
+  logo_url?: string | null;
   description: string | null;
   pickup_locations: string | null;
   operating_hours: string | null;
@@ -54,8 +60,47 @@ export function StoreSettingsView({ store }: StoreSettingsViewProps) {
   const [gcashName, setGcashName] = useState(store.gcash_name || "");
   const [gcashNumber, setGcashNumber] = useState(store.gcash_number || "");
   const [isActive, setIsActive] = useState<boolean>(store.is_active ?? true);
+  const [logoUrl, setLogoUrl] = useState<string>(store.logo_url || "");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const storefrontUrl = `/protected/marketplace`;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError(null);
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Please upload a valid image file (PNG, JPG, JPEG, WEBP).");
+      return;
+    }
+
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError("Image is too large. Maximum file size is 8MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setLogoUrl(reader.result);
+        setUploadError(null);
+      }
+    };
+    reader.onerror = () => {
+      setUploadError("Failed to read image file. Please try again.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoUrl("");
+    setUploadError(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   function handleBack() {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -86,6 +131,7 @@ export function StoreSettingsView({ store }: StoreSettingsViewProps) {
     formData.append("gcashName", gcashName);
     formData.append("gcashNumber", gcashNumber);
     formData.append("isActive", isActive ? "true" : "false");
+    formData.append("logoUrl", logoUrl);
 
     startTransition(async () => {
       const res = await updateStoreAction({}, formData);
@@ -256,6 +302,84 @@ export function StoreSettingsView({ store }: StoreSettingsViewProps) {
                   <p className="text-xs text-muted mt-0.5">
                     How your campus business appears to students and faculty.
                   </p>
+                </div>
+
+                {/* Profile Picture / Store Logo */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start pb-6 border-b border-line">
+                  <div className="md:col-span-4 flex flex-col gap-1">
+                    <span className="text-sm font-semibold text-ink">Profile Picture</span>
+                    <span className="text-xs text-muted">Your store avatar and seller brand icon.</span>
+                  </div>
+
+                  <div className="md:col-span-8 flex flex-col sm:flex-row items-center sm:items-start gap-5">
+                    {/* Avatar Display */}
+                    <div className="relative h-24 w-24 sm:h-28 sm:w-28 flex-shrink-0 rounded-2xl overflow-hidden bg-paper border-2 border-line shadow-xs group">
+                      {logoUrl ? (
+                        <Image
+                          src={logoUrl}
+                          alt={name || "Store profile photo"}
+                          fill
+                          unoptimized
+                          className="object-cover"
+                        />
+                      ) : (
+                        <div className="h-full w-full flex flex-col items-center justify-center bg-kita-green-soft text-kita-green">
+                          <Store className="h-10 w-10" />
+                        </div>
+                      )}
+
+                      {/* Hover Overlay */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="absolute inset-0 bg-ink/60 backdrop-blur-xs flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-xs font-semibold gap-1"
+                      >
+                        <Camera className="h-5 w-5" />
+                        <span>Change</span>
+                      </button>
+                    </div>
+
+                    {/* Actions and Guidelines */}
+                    <div className="flex-1 flex flex-col gap-2.5 items-center sm:items-start text-center sm:text-left">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/webp"
+                        className="hidden"
+                        onChange={handleFileChange}
+                      />
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-surface border border-line hover:border-kita-green hover:bg-paper-deep text-xs font-bold text-ink shadow-xs transition-all cursor-pointer"
+                        >
+                          <UploadCloud className="h-4 w-4 text-kita-green" />
+                          <span>{logoUrl ? "Upload New Photo" : "Upload Profile Picture"}</span>
+                        </button>
+
+                        {logoUrl && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveLogo}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-destructive/20 bg-destructive/5 hover:bg-destructive/10 text-xs font-bold text-destructive transition-all cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Remove</span>
+                          </button>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-muted leading-relaxed">
+                        Recommended: Square photo (at least 400×400px), PNG, JPG, or WEBP. Max 8MB.
+                      </p>
+
+                      {uploadError && (
+                        <p className="text-xs font-semibold text-destructive">{uploadError}</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">

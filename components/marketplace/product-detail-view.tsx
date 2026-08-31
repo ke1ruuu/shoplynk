@@ -24,6 +24,7 @@ import {
 import { ProductItem } from "@/components/marketplace/product-card";
 import { useCart } from "@/lib/cart-context";
 import { useFavorites } from "@/lib/favorites-context";
+import { StoreChatModal } from "@/components/messages/store-chat-modal";
 
 interface ProductDetailViewProps {
   product: ProductItem;
@@ -39,6 +40,7 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
   const [isCopied, setIsCopied] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [isAdded, setIsAdded] = useState(false);
   const isLiked = isFavorite(product.id) || (!!product.slug && isFavorite(product.slug));
 
@@ -183,9 +185,21 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
                 href={`/protected/marketplace/store/${product.store?.slug || product.store?.id}`}
                 className="flex items-center gap-3 group hover:opacity-80 transition-opacity"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-kita-green text-sm font-extrabold text-white shadow-sm flex-shrink-0">
-                  {product.store?.name?.substring(0, 2).toUpperCase() || "ST"}
-                </div>
+                {product.store?.logo_url ? (
+                  <div className="relative h-10 w-10 rounded-xl overflow-hidden border border-line bg-paper shadow-sm flex-shrink-0">
+                    <Image
+                      src={product.store.logo_url}
+                      alt={product.store.name}
+                      fill
+                      unoptimized
+                      className="object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-kita-green text-sm font-extrabold text-white shadow-sm flex-shrink-0">
+                    {product.store?.name?.substring(0, 2).toUpperCase() || "ST"}
+                  </div>
+                )}
                 <div className="flex flex-col truncate">
                   <span className="font-display font-bold text-sm text-ink leading-tight truncate group-hover:text-kita-green transition-colors">
                     {product.store?.name}
@@ -349,13 +363,14 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-line">
-              <Link
-                href={`/protected/messages?store=${product.store?.slug || ""}&message=${encodeURIComponent(`Hi! I'm inquiring about "${product.title}". Is it available for pickup?`)}`}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-muted hover:text-kita-green transition-colors"
+              <button
+                type="button"
+                onClick={() => setIsChatOpen(true)}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-muted hover:text-kita-green transition-colors cursor-pointer"
               >
                 <MessageSquare className="h-3.5 w-3.5" />
                 <span>Chat with {product.store?.name || "Seller"}</span>
-              </Link>
+              </button>
 
               <div className="flex items-center gap-1.5 text-xs text-muted">
                 <ShieldCheck className="h-3.5 w-3.5 text-kita-green" />
@@ -365,6 +380,20 @@ export function ProductDetailView({ product }: ProductDetailViewProps) {
           </div>
         </div>
       </div>
+
+      {/* Instant Store Chat Auto Pop-Up */}
+      {product.store && (
+        <StoreChatModal
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          storeId={product.store.id}
+          storeName={product.store.name}
+          storeSlug={product.store.slug}
+          storeLogo={product.store.logo_url}
+          sellerName={product.store.owner?.full_name}
+          initialMessage={`Hi! I'm inquiring about "${product.title}". Is it available for pickup?`}
+        />
+      )}
     </div>
   );
 }

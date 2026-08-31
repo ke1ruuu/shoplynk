@@ -57,6 +57,7 @@ export default async function SellerSettingsPage() {
     id: store.id,
     name: store.name,
     slug: store.slug,
+    logo_url: store.logo_url,
     description: store.description,
     pickup_locations: store.pickup_locations,
     operating_hours: store.operating_hours,

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import {
   Search,
@@ -468,9 +469,21 @@ export function BuyerDashboardView({
                 className="flex items-center justify-between p-3.5 border border-line bg-surface rounded-xl hover:bg-paper/40 transition-colors"
               >
                 <div className="flex items-center gap-3 truncate">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-kita-green text-xs font-extrabold text-white flex-shrink-0">
-                    {store.name.substring(0, 2).toUpperCase()}
-                  </span>
+                  {store.logo_url ? (
+                    <div className="relative h-9 w-9 rounded-lg overflow-hidden border border-line bg-paper shadow-xs flex-shrink-0">
+                      <Image
+                        src={store.logo_url}
+                        alt={store.name}
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-kita-green text-xs font-extrabold text-white flex-shrink-0">
+                      {store.name.substring(0, 2).toUpperCase()}
+                    </span>
+                  )}
                   <div className="flex flex-col truncate">
                     <span className="font-bold text-xs text-ink truncate">
                       {store.name}

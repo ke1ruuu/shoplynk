@@ -1,13 +1,11 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   FileText,
   Shield,
-  Printer,
-  Share2,
   Check,
   ChevronRight,
   ArrowLeft,
@@ -28,60 +26,180 @@ interface LegalShellProps {
 export function LegalShell({ initialTab = "terms" }: LegalShellProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"terms" | "privacy">(initialTab);
-  const [copied, setCopied] = useState(false);
   const [activeSection, setActiveSection] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const isProgrammaticScrollRef = useRef(false);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const tocNavRef = useRef<HTMLElement | null>(null);
+
   const currentSections = activeTab === "terms" ? TERMS_SECTIONS : PRIVACY_SECTIONS;
 
-  // Sync tab with props
+  // Sync tab with props and set initial section
   useEffect(() => {
     setActiveTab(initialTab);
+    const hash = typeof window !== "undefined" ? window.location.hash.replace("#", "") : "";
+    const sections = initialTab === "terms" ? TERMS_SECTIONS : PRIVACY_SECTIONS;
+    if (hash && sections.some((s) => s.id === hash)) {
+      setActiveSection(hash);
+    } else if (sections.length > 0) {
+      setActiveSection(sections[0].id);
+    }
   }, [initialTab]);
 
-  // Scroll spy for active TOC section
+  // Auto-scroll the Table of Contents container so the active highlighted item remains visible inside the TOC sidebar
   useEffect(() => {
-    const handleScroll = () => {
-      const scrollPosition = window.scrollY + 160;
-      for (const section of currentSections) {
-        const element = document.getElementById(section.id);
-        if (element) {
-          const top = element.offsetTop;
-          const height = element.offsetHeight;
-          if (scrollPosition >= top && scrollPosition < top + height) {
-            setActiveSection(section.id);
-            break;
-          }
+    if (!activeSection || !tocNavRef.current) return;
+    const activeItem = document.getElementById(`toc-link-${activeSection}`);
+    const navContainer = tocNavRef.current;
+    if (activeItem && navContainer) {
+      const navRect = navContainer.getBoundingClientRect();
+      const itemRect = activeItem.getBoundingClientRect();
+
+      // If active item is outside or near the edges of the TOC scrollable container, smoothly scroll it into view
+      if (itemRect.top < navRect.top + 24 || itemRect.bottom > navRect.bottom - 24) {
+        activeItem.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    }
+  }, [activeSection]);
+
+  // Robust Scroll Spy for active TOC section
+  useEffect(() => {
+    const sections = activeTab === "terms" ? TERMS_SECTIONS : PRIVACY_SECTIONS;
+
+    // Check initial hash on mount/tab change
+    const hash = window.location.hash.replace("#", "");
+    if (hash && sections.some((s) => s.id === hash)) {
+      setActiveSection(hash);
+    } else if (sections.length > 0) {
+      setActiveSection(sections[0].id);
+    }
+
+    let ticking = false;
+
+    const cancelProgrammaticScroll = () => {
+      if (isProgrammaticScrollRef.current) {
+        isProgrammaticScrollRef.current = false;
+        if (scrollTimeoutRef.current) {
+          clearTimeout(scrollTimeoutRef.current);
         }
       }
     };
 
+    const handleScroll = () => {
+      // Don't calculate during programmatic smooth scroll to prevent glitching/flicker
+      if (isProgrammaticScrollRef.current) {
+        return;
+      }
+
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          if (isProgrammaticScrollRef.current) {
+            ticking = false;
+            return;
+          }
+
+          // Check bottom of page first
+          if (
+            window.innerHeight + window.scrollY >=
+            document.documentElement.scrollHeight - 60
+          ) {
+            if (sections.length > 0) {
+              setActiveSection(sections[sections.length - 1].id);
+            }
+            ticking = false;
+            return;
+          }
+
+          // Natural reading threshold (220px from top of viewport)
+          const headerThreshold = 220;
+          let currentId = sections[0]?.id || "";
+
+          // Check sections in reverse to find the active visible section
+          for (const section of [...sections].reverse()) {
+            const element = document.getElementById(section.id);
+            if (element) {
+              const rect = element.getBoundingClientRect();
+              if (rect.top <= headerThreshold) {
+                currentId = section.id;
+                break;
+              }
+            }
+          }
+
+          if (currentId) {
+            setActiveSection(currentId);
+          }
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll();
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [activeTab, currentSections]);
+    window.addEventListener("wheel", cancelProgrammaticScroll, { passive: true });
+    window.addEventListener("touchmove", cancelProgrammaticScroll, { passive: true });
+
+    // Run after layout paint
+    const timer = setTimeout(handleScroll, 120);
+
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("wheel", cancelProgrammaticScroll);
+      window.removeEventListener("touchmove", cancelProgrammaticScroll);
+      clearTimeout(timer);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
+  }, [activeTab]);
+
+  const handleSectionClick = (e: React.MouseEvent, sectionId: string) => {
+    e.preventDefault();
+
+    // Lock scroll spy to immediately show the target highlight without glitching through intermediate sections
+    isProgrammaticScrollRef.current = true;
+    setActiveSection(sectionId);
+
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+
+    const element = document.getElementById(sectionId);
+    if (element) {
+      const topOffset = 110; // matches scroll-mt-28
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.scrollY - topOffset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+      window.history.pushState(null, "", `#${sectionId}`);
+    }
+
+    // Unlock after smooth scroll completes
+    scrollTimeoutRef.current = setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 750);
+  };
 
   const handleTabChange = (tab: "terms" | "privacy") => {
     setActiveTab(tab);
-    router.push(`/${tab}`);
-  };
-
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleShare = () => {
-    if (typeof window !== "undefined") {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+    const sections = tab === "terms" ? TERMS_SECTIONS : PRIVACY_SECTIONS;
+    if (sections.length > 0) {
+      setActiveSection(sections[0].id);
     }
+    router.push(`/${tab}`);
   };
 
   const filteredSections = searchQuery.trim()
     ? currentSections.filter((s) =>
-        s.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+      s.title.toLowerCase().includes(searchQuery.toLowerCase())
+    )
     : currentSections;
 
   return (
@@ -134,38 +252,6 @@ export function LegalShell({ initialTab = "terms" }: LegalShellProps) {
                   ? "Guidelines, seller rules, and community standards for trading safely within the Luis Y. Ferrer Jr. Senior High School campus marketplace."
                   : "How LYNK collects, protects, and handles personal student information under the Philippine Data Privacy Act of 2012 (RA 10173)."}
               </p>
-
-            </div>
-
-            {/* Quick Action Tools */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink bg-paper hover:bg-paper-deep border border-line px-3.5 h-10 rounded-xl transition-colors shadow-sm"
-                title="Print this policy"
-              >
-                <Printer className="w-4 h-4 text-muted" />
-                <span className="hidden sm:inline">Print Document</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleShare}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink bg-paper hover:bg-paper-deep border border-line px-3.5 h-10 rounded-xl transition-colors shadow-sm"
-                title="Copy link to clipboard"
-              >
-                {copied ? (
-                  <>
-                    <Check className="w-4 h-4 text-kita-green" />
-                    <span className="text-kita-green">Copied!</span>
-                  </>
-                ) : (
-                  <>
-                    <Share2 className="w-4 h-4 text-muted" />
-                    <span className="hidden sm:inline">Share Link</span>
-                  </>
-                )}
-              </button>
             </div>
           </div>
 
@@ -174,11 +260,10 @@ export function LegalShell({ initialTab = "terms" }: LegalShellProps) {
             <button
               type="button"
               onClick={() => handleTabChange("terms")}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                activeTab === "terms"
-                  ? "bg-surface text-kita-green shadow-sm border border-line"
-                  : "text-muted hover:text-ink hover:bg-paper-deep"
-              }`}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "terms"
+                ? "bg-surface text-kita-green shadow-sm border border-line"
+                : "text-muted hover:text-ink hover:bg-paper-deep"
+                }`}
             >
               <FileText className="w-4 h-4" />
               <span>Terms of Service</span>
@@ -186,11 +271,10 @@ export function LegalShell({ initialTab = "terms" }: LegalShellProps) {
             <button
               type="button"
               onClick={() => handleTabChange("privacy")}
-              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
-                activeTab === "privacy"
-                  ? "bg-surface text-kita-green shadow-sm border border-line"
-                  : "text-muted hover:text-ink hover:bg-paper-deep"
-              }`}
+              className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === "privacy"
+                ? "bg-surface text-kita-green shadow-sm border border-line"
+                : "text-muted hover:text-ink hover:bg-paper-deep"
+                }`}
             >
               <Shield className="w-4 h-4" />
               <span>Privacy Policy</span>
@@ -202,7 +286,7 @@ export function LegalShell({ initialTab = "terms" }: LegalShellProps) {
       {/* Main Content Body: 2-Column Responsive Layout */}
       <main className="flex-1 max-w-[1280px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 items-start">
-          
+
           {/* Left Column: Sticky Table of Contents & Quick Navigation */}
           <aside className="lg:col-span-4 space-y-6 lg:sticky lg:top-28">
             <div className="bg-surface rounded-2xl border border-line p-5 shadow-sm space-y-4">
@@ -226,24 +310,27 @@ export function LegalShell({ initialTab = "terms" }: LegalShellProps) {
               </div>
 
               {/* Navigation Links */}
-              <nav className="max-h-[380px] overflow-y-auto space-y-1 pr-1 text-xs custom-scrollbar">
+              <nav
+                ref={tocNavRef}
+                className="max-h-[580px] lg:max-h-[calc(100vh-250px)] overflow-y-auto space-y-1 pr-1.5 pb-2 text-xs custom-scrollbar"
+              >
                 {filteredSections.map((section) => {
                   const isActive = activeSection === section.id;
                   return (
                     <a
                       key={section.id}
+                      id={`toc-link-${section.id}`}
                       href={`#${section.id}`}
-                      className={`flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${
-                        isActive
-                          ? "bg-kita-green/10 text-kita-green font-bold"
-                          : "text-muted hover:bg-paper-deep hover:text-ink"
-                      }`}
+                      onClick={(e) => handleSectionClick(e, section.id)}
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl transition-colors ${isActive
+                        ? "bg-kita-green/10 text-kita-green font-bold"
+                        : "text-muted hover:bg-paper-deep hover:text-ink"
+                        }`}
                     >
                       <span className="truncate">{section.title}</span>
                       <ChevronRight
-                        className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${
-                          isActive ? "translate-x-0.5 text-kita-green" : "text-muted/50"
-                        }`}
+                        className={`w-3.5 h-3.5 flex-shrink-0 transition-transform ${isActive ? "translate-x-0.5 text-kita-green" : "text-muted/50"
+                          }`}
                       />
                     </a>
                   );
@@ -261,7 +348,9 @@ export function LegalShell({ initialTab = "terms" }: LegalShellProps) {
               </p>
               <div className="pt-1 flex flex-col gap-2">
                 <a
-                  href="mailto:support@projectkita.edu.ph"
+                  href="https://mail.google.com/mail/?view=cm&fs=1&to=laelzoey09@gmail.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-ink bg-surface border border-line px-3 py-2 rounded-xl hover:bg-paper transition-colors"
                 >
                   Contact Campus Support

@@ -10,6 +10,8 @@ import { Panel } from "@/components/dashboard/panel";
 import { StatusPill } from "@/components/dashboard/status-pill";
 import { EmptyState } from "@/components/dashboard/empty-state";
 
+import { AdminStoresTable } from "@/components/admin/admin-stores-table";
+
 export const metadata: Metadata = {
   title: "Campus Stores — Admin Console",
   description: "Directory and compliance monitoring for verified student storefronts.",
@@ -100,110 +102,8 @@ export default async function AdminStoresPage() {
         ]}
       />
 
-      <Panel heading={`Store directory (${stores.length})`} flush>
-        {stores.length === 0 ? (
-          <EmptyState
-            icon={Store}
-            title="No storefronts yet"
-            body="Once you approve a student's seller verification, their storefront appears here with its pickup details, catalog size, and buyer rating."
-          />
-        ) : (
-          <ul className="divide-y divide-line">
-            {stores.map((store) => (
-              <li
-                key={store.id}
-                className="flex flex-col gap-3 px-4 py-4 transition-colors hover:bg-paper/60 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
-              >
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                    <h3 className="text-sm font-semibold text-ink">{store.name}</h3>
-                    <StatusPill intent={store.is_active ? "live" : "stopped"}>
-                      {store.is_active ? "Open" : "Paused"}
-                    </StatusPill>
-                  </div>
-
-                  <p className="text-xs text-muted">
-                    {store.sellerName}
-                    {store.sellerEmail && (
-                      <>
-                        {" · "}
-                        <span className="tabular">{store.sellerEmail}</span>
-                      </>
-                    )}
-                  </p>
-
-                  {store.description && (
-                    <p className="line-clamp-2 max-w-[64ch] text-sm leading-relaxed text-muted">
-                      {store.description}
-                    </p>
-                  )}
-
-                  {(store.pickup_locations || store.operating_hours) && (
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-muted">
-                      {store.pickup_locations && (
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <MapPin
-                            className="h-3.5 w-3.5 flex-shrink-0 text-muted"
-                            strokeWidth={1.75}
-                            aria-hidden="true"
-                          />
-                          <span className="truncate">{store.pickup_locations}</span>
-                        </span>
-                      )}
-                      {store.operating_hours && (
-                        <span className="flex min-w-0 items-center gap-1.5">
-                          <Clock
-                            className="h-3.5 w-3.5 flex-shrink-0 text-muted"
-                            strokeWidth={1.75}
-                            aria-hidden="true"
-                          />
-                          <span className="truncate">{store.operating_hours}</span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <dl className="flex flex-shrink-0 items-start gap-6 sm:gap-8">
-                  <div className="flex flex-col gap-0.5">
-                    <dt className="text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-muted">
-                      Live
-                    </dt>
-                    <dd className="tabular text-sm font-bold text-ink">
-                      {store.activeProducts}
-                      <span className="font-normal text-muted"> / {store.totalProducts}</span>
-                    </dd>
-                  </div>
-
-                  <div className="flex flex-col gap-0.5">
-                    <dt className="text-[0.6875rem] font-semibold uppercase tracking-[0.07em] text-muted">
-                      Rating
-                    </dt>
-                    <dd className="flex items-center gap-1.5">
-                      {store.rating_count > 0 ? (
-                        <>
-                          <Star
-                            className="h-3.5 w-3.5 fill-spark text-spark"
-                            strokeWidth={1.75}
-                            aria-hidden="true"
-                          />
-                          <span className="tabular text-sm font-bold text-ink">
-                            {store.rating_avg.toFixed(1)}
-                          </span>
-                          <span className="tabular text-xs text-muted">
-                            ({store.rating_count})
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-sm text-muted">No reviews</span>
-                      )}
-                    </dd>
-                  </div>
-                </dl>
-              </li>
-            ))}
-          </ul>
-        )}
+      <Panel heading="Campus Store Directory" flush>
+        <AdminStoresTable initialStores={stores} />
       </Panel>
     </main>
   );

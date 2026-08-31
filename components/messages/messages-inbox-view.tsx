@@ -557,8 +557,17 @@ export function MessagesInboxView({
               {/* Active Header */}
               <div className="flex items-center justify-between p-4 border-b border-line bg-surface">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-paper-deep border border-line flex items-center justify-center font-display font-extrabold text-xs text-ink">
-                    {counterpartName?.charAt(0).toUpperCase()}
+                  <div className="relative h-9 w-9 rounded-full bg-paper-deep border border-line flex items-center justify-center font-display font-extrabold text-xs text-ink overflow-hidden flex-shrink-0">
+                    {isCurrentBuyer && activeConversation.store.logo_url ? (
+                      <Image
+                        src={activeConversation.store.logo_url}
+                        alt={counterpartName}
+                        fill
+                        className="object-cover"
+                      />
+                    ) : (
+                      counterpartName?.charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1.5">

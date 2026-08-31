@@ -20,6 +20,9 @@ import {
   Mail,
   X,
   Check,
+  UserX,
+  Trash2,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Dialog,
@@ -28,7 +31,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { approveVerificationAction } from "@/app/actions/verification";
+import {
+  approveVerificationAction,
+  removeSellerAction,
+  deleteVerificationAction,
+} from "@/app/actions/verification";
 import { RejectDialog } from "./reject-dialog";
 import { createClient } from "@/lib/supabase/client";
 
@@ -75,6 +82,11 @@ export function VerificationReviewTable({
     applicantName: string;
     studentId: string;
   } | null>(null);
+
+  // Revoke / Remove Seller state
+  const [revokeConfirmApp, setRevokeConfirmApp] = useState<AdminVerificationItem | null>(null);
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [deleteRecordChecked, setDeleteRecordChecked] = useState(false);
 
   const [isPending, startTransition] = useTransition();
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -166,6 +178,35 @@ export function VerificationReviewTable({
         alert(res.message || "Failed to approve verification.");
       }
     });
+  }
+
+  async function handleRemoveSeller(app: AdminVerificationItem, deleteRecord: boolean) {
+    setIsRevoking(true);
+    const res = await removeSellerAction(app.id, deleteRecord);
+    setIsRevoking(false);
+    if (res.success) {
+      if (deleteRecord) {
+        setVerifications((prev) => prev.filter((item) => item.id !== app.id));
+      } else {
+        setVerifications((prev) =>
+          prev.map((item) =>
+            item.id === app.id
+              ? {
+                  ...item,
+                  status: "REJECTED",
+                  rejection_reason:
+                    "Seller privileges were revoked by campus administration.",
+                }
+              : item
+          )
+        );
+      }
+      setRevokeConfirmApp(null);
+      setSelectedVerification(null);
+      router.refresh();
+    } else {
+      alert(res.message || "Failed to remove seller.");
+    }
   }
 
   // Filter & Search
@@ -487,7 +528,7 @@ export function VerificationReviewTable({
                         studentId: app.student_id_number,
                       });
                     }}
-                    className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                    className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50 cursor-pointer"
                   >
                     Reject Application
                   </button>
@@ -496,7 +537,7 @@ export function VerificationReviewTable({
                     type="button"
                     disabled={isPending || approvingId === selectedVerification.id}
                     onClick={() => handleApprove(selectedVerification.id)}
-                    className="inline-flex items-center gap-2 rounded-xl bg-kita-green px-5 py-2 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep active:scale-95 transition-all disabled:opacity-50"
+                    className="inline-flex items-center gap-2 rounded-xl bg-kita-green px-5 py-2 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
                   >
                     {approvingId === selectedVerification.id ? (
                       <span className="flex items-center gap-1.5">
@@ -509,6 +550,166 @@ export function VerificationReviewTable({
                   </button>
                 </div>
               )}
+
+              {/* Approved Seller Actions (Below Box) */}
+              {selectedVerification.status === "APPROVED" && (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-line">
+                  <div className="flex items-center gap-2 text-xs font-bold text-kita-green">
+                    <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                    <span>Verified Active Campus Seller</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setRevokeConfirmApp(selectedVerification)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive hover:bg-destructive/20 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <UserX className="h-3.5 w-3.5" />
+                      <span>Remove as Seller</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Rejected Seller Actions (Below Box) */}
+              {selectedVerification.status === "REJECTED" && (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-line">
+                  <div className="flex flex-col gap-0.5 text-xs">
+                    <span className="font-bold text-destructive">Application Rejected</span>
+                    {selectedVerification.rejection_reason && (
+                      <span className="text-[11px] text-muted">
+                        Reason: {selectedVerification.rejection_reason}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setRevokeConfirmApp(selectedVerification)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-2 text-xs font-bold text-destructive hover:bg-destructive/20 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      <span>Delete Record</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* Revoke / Remove Seller Confirmation Dialog */}
+      {revokeConfirmApp && (
+        <Dialog
+          open={!!revokeConfirmApp}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRevokeConfirmApp(null);
+              setDeleteRecordChecked(false);
+            }
+          }}
+        >
+          <DialogContent className="sm:max-w-[460px] bg-surface rounded-3xl border border-line p-6 shadow-flyer-lg">
+            <DialogHeader className="gap-1.5">
+              <div className="flex items-center gap-2 text-destructive font-bold text-xs uppercase tracking-wider">
+                <ShieldAlert className="h-4 w-4" />
+                <span>
+                  {revokeConfirmApp.status === "APPROVED"
+                    ? "Remove Approved Seller"
+                    : "Delete Verification Record"}
+                </span>
+              </div>
+              <DialogTitle className="text-lg font-bold text-ink">
+                {revokeConfirmApp.status === "APPROVED"
+                  ? "Revoke Seller Privileges?"
+                  : "Delete Verification Record?"}
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted leading-relaxed">
+                {revokeConfirmApp.status === "APPROVED" ? (
+                  <>
+                    Are you sure you want to remove{" "}
+                    <strong className="text-ink">
+                      {revokeConfirmApp.profile?.full_name || revokeConfirmApp.student_id_number}
+                    </strong>{" "}
+                    as an approved seller?
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to delete the verification record for{" "}
+                    <strong className="text-ink">
+                      {revokeConfirmApp.profile?.full_name || revokeConfirmApp.student_id_number}
+                    </strong>
+                    ?
+                  </>
+                )}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="flex flex-col gap-3 my-2 text-xs">
+              {revokeConfirmApp.status === "APPROVED" && (
+                <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-3.5 text-destructive flex flex-col gap-1.5">
+                  <span className="font-bold">What happens next:</span>
+                  <ul className="list-disc pl-4 space-y-1 text-[11px] text-muted leading-relaxed">
+                    <li>Account will be downgraded from <strong>SELLER</strong> back to <strong>BUYER</strong>.</li>
+                    <li>Their campus store and active marketplace listings will be deactivated.</li>
+                    <li>They will lose access to Seller Studio and product management.</li>
+                  </ul>
+                </div>
+              )}
+
+              <label className="flex items-center gap-2.5 cursor-pointer text-xs text-ink select-none pt-1">
+                <input
+                  type="checkbox"
+                  checked={deleteRecordChecked}
+                  onChange={(e) => setDeleteRecordChecked(e.target.checked)}
+                  className="h-4 w-4 rounded border-line text-destructive focus:ring-destructive cursor-pointer"
+                />
+                <span>
+                  {revokeConfirmApp.status === "APPROVED"
+                    ? "Also permanently delete this verification application record"
+                    : "Permanently purge from system records"}
+                </span>
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-line">
+              <button
+                type="button"
+                disabled={isRevoking}
+                onClick={() => {
+                  setRevokeConfirmApp(null);
+                  setDeleteRecordChecked(false);
+                }}
+                className="rounded-xl border border-line bg-paper px-4 py-2 text-xs font-bold text-ink hover:bg-paper-deep transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={isRevoking}
+                onClick={() => handleRemoveSeller(revokeConfirmApp, deleteRecordChecked || revokeConfirmApp.status !== "APPROVED")}
+                className="inline-flex items-center gap-2 rounded-xl bg-destructive px-5 py-2 text-xs font-bold text-white shadow-flyer hover:bg-destructive/90 active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {isRevoking ? (
+                  <span className="flex items-center gap-1.5">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    Removing…
+                  </span>
+                ) : (
+                  <>
+                    <UserX className="h-3.5 w-3.5" />
+                    <span>
+                      {revokeConfirmApp.status === "APPROVED"
+                        ? "Confirm Remove as Seller"
+                        : "Delete Record"}
+                    </span>
+                  </>
+                )}
+              </button>
             </div>
           </DialogContent>
         </Dialog>

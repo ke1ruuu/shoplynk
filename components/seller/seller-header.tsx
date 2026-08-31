@@ -1,8 +1,9 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Clock, CreditCard, Star, Settings, Plus } from "lucide-react";
+import { Store, MapPin, Clock, CreditCard, Star, Settings, Plus } from "lucide-react";
 import { PageHeader, MetaList } from "@/components/dashboard/page-header";
 import { StatusPill } from "@/components/dashboard/status-pill";
 
@@ -28,8 +29,25 @@ interface SellerHeaderProps {
 }
 
 export function SellerHeader({ store, onAddProduct }: SellerHeaderProps) {
+  const storeAvatar = (
+    <div className="relative h-14 w-14 sm:h-16 sm:w-16 rounded-2xl overflow-hidden bg-paper border-2 border-line shadow-xs flex items-center justify-center text-kita-green flex-shrink-0">
+      {store.logo_url ? (
+        <Image
+          src={store.logo_url}
+          alt={store.name}
+          fill
+          unoptimized
+          className="object-cover"
+        />
+      ) : (
+        <Store className="h-7 w-7 text-kita-green" />
+      )}
+    </div>
+  );
+
   return (
     <PageHeader
+      icon={storeAvatar}
       title={store.name}
       description={store.description || undefined}
       meta={

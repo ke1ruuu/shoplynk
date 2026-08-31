@@ -115,7 +115,26 @@ export async function getOrCreateConversationAction({
   const targetStoreId = store.id;
   let targetSellerId = store.user_id;
 
-  // Verify seller_id is valid profile or find a valid profile
+  // 2. Ensure current user profile exists in database
+  const { data: userProfile } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!userProfile) {
+    await supabase.from("profiles").upsert(
+      {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name || "Student User",
+        role: user.role || "BUYER",
+      },
+      { onConflict: "id" }
+    );
+  }
+
+  // 3. Ensure seller profile exists in database
   if (!targetSellerId) {
     const { data: fallbackProfile } = await supabase
       .from("profiles")
@@ -123,12 +142,29 @@ export async function getOrCreateConversationAction({
       .limit(1)
       .single();
     targetSellerId = fallbackProfile?.id || user.id;
+  } else {
+    const { data: sellerProf } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("id", targetSellerId)
+      .maybeSingle();
+
+    if (!sellerProf) {
+      await supabase.from("profiles").upsert(
+        {
+          id: targetSellerId,
+          full_name: store.name ? `${store.name} Merchant` : "Campus Merchant",
+          role: "SELLER",
+        },
+        { onConflict: "id" }
+      );
+    }
   }
 
   const now = new Date().toISOString();
   let conversationId: string | undefined;
 
-  // 2. Check for existing conversation in Supabase
+  // 4. Check for existing conversation in Supabase
   const { data: existing } = await supabase
     .from("conversations")
     .select("id")
@@ -139,26 +175,23 @@ export async function getOrCreateConversationAction({
   if (existing?.id) {
     conversationId = existing.id;
   } else {
-    // 3. Upsert conversation in Supabase
-    const { data: newConv, error: upsertErr } = await supabase
+    // 5. Insert new conversation
+    const { data: newConv, error: insertErr } = await supabase
       .from("conversations")
-      .upsert(
-        {
-          buyer_id: user.id,
-          seller_id: targetSellerId,
-          store_id: targetStoreId,
-          last_message_at: now,
-          updated_at: now,
-        },
-        { onConflict: "buyer_id,store_id" }
-      )
+      .insert({
+        buyer_id: user.id,
+        seller_id: targetSellerId,
+        store_id: targetStoreId,
+        last_message_at: now,
+        updated_at: now,
+      })
       .select("id")
       .maybeSingle();
 
     if (newConv?.id) {
       conversationId = newConv.id;
     } else {
-      // Refetch if select failed on upsert
+      // If error (e.g. duplicate key), fetch existing
       const { data: refetched } = await supabase
         .from("conversations")
         .select("id")
@@ -171,13 +204,13 @@ export async function getOrCreateConversationAction({
   }
 
   if (!conversationId) {
-    console.warn("Could not determine conversation ID, checking existing list");
-    const { data: allUserConvs } = await supabase
+    const { data: anyConv } = await supabase
       .from("conversations")
       .select("id")
-      .eq("buyer_id", user.id)
-      .limit(1);
-    conversationId = allUserConvs?.[0]?.id;
+      .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`)
+      .limit(1)
+      .maybeSingle();
+    conversationId = anyConv?.id;
   }
 
   return { success: true, conversationId };

@@ -8,8 +8,10 @@ const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 const AUTH_SECRET =
   process.env.AUTH_SECRET ||
+  process.env.SUPABASE_SERVICE_ROLE_KEY ||
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
-  "projectkita-secure-session-signing-key-default";
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  "projectkita-secure-session-signing-key-default-v2";
 
 export interface SessionUser {
   id: string;
@@ -157,6 +159,16 @@ export async function getCurrentUserProfile() {
     .eq("id", user.id)
     .maybeSingle();
 
+  // If profile is missing from DB table, synthesize a safe profile from valid session user
+  const effectiveProfile = profile || {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    role: user.role,
+    avatar_url: null,
+    is_verified_seller: user.role === "SELLER",
+  };
+
   if (profile && profile.role && profile.role !== user.role) {
     user.role = profile.role;
     try {
@@ -171,7 +183,7 @@ export async function getCurrentUserProfile() {
     }
   }
 
-  return { user, profile };
+  return { user, profile: effectiveProfile };
 }
 
 /**

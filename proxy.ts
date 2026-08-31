@@ -54,12 +54,12 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // 5. Authenticated Student (Buyer/Seller) visiting Admin routes -> redirect to Student Dashboard
+  // 5. Authenticated Student (Buyer/Seller) visiting Admin routes, auth routes, or landing root -> redirect to Student Dashboard
   if (user && !isAdmin) {
     if (pathname.startsWith("/admin")) {
       return NextResponse.redirect(new URL("/protected", request.url));
     }
-    if (isStudentAuthRoute) {
+    if (isStudentAuthRoute || pathname === "/") {
       return NextResponse.redirect(new URL("/protected", request.url));
     }
   }

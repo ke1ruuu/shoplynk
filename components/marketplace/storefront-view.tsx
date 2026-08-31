@@ -21,6 +21,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { ProductCard, ProductItem } from "./product-card";
+import { StoreChatModal } from "@/components/messages/store-chat-modal";
 
 export interface StorefrontData {
   id: string;
@@ -57,6 +58,7 @@ export function StorefrontView({ store, products, isOwner }: StorefrontViewProps
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"featured" | "price-asc" | "price-desc">("featured");
   const [copied, setCopied] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   function handleBack() {
     if (typeof window !== "undefined" && window.history.length > 1) {
@@ -144,13 +146,14 @@ export function StorefrontView({ store, products, isOwner }: StorefrontViewProps
               </>
             ) : (
               <div className="flex items-center gap-2">
-                <Link
-                  href={`/protected/messages?store=${store.slug}`}
-                  className="inline-flex items-center gap-1.5 rounded-xl bg-kita-green px-3.5 py-1.5 text-xs font-bold text-white shadow-flyer transition-all hover:bg-kita-green-deep active:scale-95"
+                <button
+                  type="button"
+                  onClick={() => setIsChatOpen(true)}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-kita-green px-3.5 py-1.5 text-xs font-bold text-white shadow-flyer transition-all hover:bg-kita-green-deep active:scale-95 cursor-pointer"
                 >
                   <MessageSquare className="h-3.5 w-3.5" />
                   <span>Message Seller</span>
-                </Link>
+                </button>
                 <button
                   type="button"
                   onClick={handleCopyLink}
@@ -402,6 +405,17 @@ export function StorefrontView({ store, products, isOwner }: StorefrontViewProps
           )}
         </section>
       </div>
+
+      {/* Instant Store Chat Auto Pop-Up */}
+      <StoreChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        storeId={store.id}
+        storeName={store.name}
+        storeSlug={store.slug}
+        storeLogo={store.logo_url}
+        sellerName={store.owner?.full_name}
+      />
     </div>
   );
 }
