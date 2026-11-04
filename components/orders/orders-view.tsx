@@ -24,12 +24,14 @@ import {
   XCircle,
   AlertTriangle,
   X,
+  Star,
 } from "lucide-react";
 import { BuyerOrder } from "@/components/dashboard/buyer-dashboard-view";
 import { StatusPill, orderStatus } from "@/components/dashboard/status-pill";
 import { ProductItem } from "@/components/marketplace/product-card";
 import { useCart } from "@/lib/cart-context";
 import { cancelOrderAction } from "@/app/actions/orders";
+import { WebsiteRatingDialog } from "@/components/ratings/website-rating-dialog";
 
 interface OrdersViewProps {
   displayName: string;
@@ -108,6 +110,7 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string>(initialOrders[0]?.id || "");
   const [addedProductId, setAddedProductId] = useState<string | null>(null);
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
 
   // Cancellation Modal State
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -247,13 +250,24 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
           </p>
         </div>
 
-        <Link
-          href="/protected/marketplace"
-          className="inline-flex h-9 items-center gap-2 rounded-xl bg-kita-green px-4 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep transition-all active:scale-95 self-start sm:self-auto"
-        >
-          <ShoppingBag className="h-3.5 w-3.5" />
-          <span>Browse Marketplace</span>
-        </Link>
+        <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => setShowRatingDialog(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-spark-deep/30 bg-spark-soft/50 px-3.5 text-xs font-bold text-spark-ink hover:bg-spark-soft transition-colors"
+          >
+            <Star className="h-3.5 w-3.5 fill-spark text-spark" />
+            <span>Rate Website</span>
+          </button>
+
+          <Link
+            href="/protected/marketplace"
+            className="inline-flex h-9 items-center gap-2 rounded-xl bg-kita-green px-4 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep transition-all active:scale-95"
+          >
+            <ShoppingBag className="h-3.5 w-3.5" />
+            <span>Browse Marketplace</span>
+          </Link>
+        </div>
       </div>
 
       {/* 2. Filter Tabs & Search Bar */}
@@ -934,6 +948,16 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
           </div>
         </div>
       )}
+
+      {/* Website Rating Dialog for Buyers */}
+      <WebsiteRatingDialog
+        open={showRatingDialog}
+        onOpenChange={setShowRatingDialog}
+        triggerSource="BUYER_PURCHASE"
+        orderNumber={orders[0]?.order_number}
+        userName={displayName}
+        userRole="BUYER"
+      />
     </div>
   );
 }

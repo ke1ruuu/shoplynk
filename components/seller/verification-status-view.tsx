@@ -20,6 +20,7 @@ import {
   Check,
   ExternalLink,
 } from "lucide-react";
+import { isValidImageUrl } from "@/lib/utils";
 
 export interface StudentVerificationData {
   id: string;
@@ -294,22 +295,32 @@ export function VerificationStatusView({
               <div className="flex flex-col gap-3 pt-2 border-t border-line">
                 <span className="text-xs font-bold text-ink">Submitted ID Document:</span>
                 <div className="relative h-64 sm:h-80 w-full overflow-hidden rounded-xl border border-line bg-paper-deep shadow-xs">
-                  <Image
-                    src={verification.id_image_url}
-                    alt="Student ID card"
-                    fill
-                    className="object-contain p-3"
-                  />
-                  {/* Scanner Corner Guides */}
-                  <div className="absolute top-3 left-3 h-5 w-5 border-t-2 border-l-2 border-kita-green" />
-                  <div className="absolute top-3 right-3 h-5 w-5 border-t-2 border-r-2 border-kita-green" />
-                  <div className="absolute bottom-3 left-3 h-5 w-5 border-b-2 border-l-2 border-kita-green" />
-                  <div className="absolute bottom-3 right-3 h-5 w-5 border-b-2 border-r-2 border-kita-green" />
+                  {isValidImageUrl(verification.id_image_url) ? (
+                    <>
+                      <Image
+                        src={verification.id_image_url}
+                        alt="Student ID card"
+                        fill
+                        unoptimized
+                        className="object-contain p-3"
+                      />
+                      {/* Scanner Corner Guides */}
+                      <div className="absolute top-3 left-3 h-5 w-5 border-t-2 border-l-2 border-kita-green" />
+                      <div className="absolute top-3 right-3 h-5 w-5 border-t-2 border-r-2 border-kita-green" />
+                      <div className="absolute bottom-3 left-3 h-5 w-5 border-b-2 border-l-2 border-kita-green" />
+                      <div className="absolute bottom-3 right-3 h-5 w-5 border-b-2 border-r-2 border-kita-green" />
 
-                  <div className="absolute top-3 left-10 inline-flex items-center gap-1.5 rounded-lg bg-surface/90 backdrop-blur-md px-2.5 py-1 text-xs font-bold text-ink border border-line shadow-xs">
-                    <CheckCircle2 className="h-3.5 w-3.5 text-kita-green" />
-                    <span>Attached Document on File</span>
-                  </div>
+                      <div className="absolute top-3 left-10 inline-flex items-center gap-1.5 rounded-lg bg-surface/90 backdrop-blur-md px-2.5 py-1 text-xs font-bold text-ink border border-line shadow-xs">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-kita-green" />
+                        <span>Attached Document on File</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-xs text-muted">
+                      <AlertTriangle className="h-6 w-6 text-amber-500" />
+                      <span>Document file recorded (unformatted preview).</span>
+                    </div>
+                  )}
                 </div>
               </div>
             )}

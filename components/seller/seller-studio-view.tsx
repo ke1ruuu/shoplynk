@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Store,
@@ -15,6 +15,9 @@ import {
   CheckCircle2,
   AlertCircle,
   Truck,
+  TrendingUp,
+  Banknote,
+  Star,
 } from "lucide-react";
 import { StatusPill, orderStatus } from "@/components/dashboard/status-pill";
 import { ProductTable, SellerProductItem } from "./product-table";
@@ -22,6 +25,7 @@ import { CategoryOption } from "./product-editor-view";
 import { DeleteProductDialog } from "./delete-product-dialog";
 import { peso } from "@/lib/format";
 import { updateOrderStatusAction } from "@/app/actions/orders";
+import { WebsiteRatingDialog } from "@/components/ratings/website-rating-dialog";
 
 export interface SellerOrder {
   id: string;
@@ -87,6 +91,33 @@ export function SellerStudioView({
 
   const [orderList, setOrderList] = useState<SellerOrder[]>(orders);
   const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [ratingOrderNumber, setRatingOrderNumber] = useState<string | undefined>(undefined);
+
+  // Random pop-up when seller has an order (triggers once only; stops once they are done answering)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const alreadyAnswered = localStorage.getItem("projectkita_seller_rated") === "true";
+      if (alreadyAnswered) return;
+
+      // Only randomly pop up when the seller got an order
+      if (orderList.length > 0) {
+        // ~50% random chance when viewing incoming orders
+        const isRandomSelected = Math.random() < 0.5;
+        if (isRandomSelected) {
+          const timer = setTimeout(() => {
+            const latestOrder = orderList[0];
+            setRatingOrderNumber(latestOrder?.order_number);
+            setShowRatingDialog(true);
+          }, 1500);
+          return () => clearTimeout(timer);
+        }
+      }
+    } catch (e) {
+      console.warn("Storage check notice:", e);
+    }
+  }, [orderList]);
 
   function handleDeleteProduct(product: { id: string; title: string }) {
     setProductToDelete(product);
@@ -100,11 +131,26 @@ export function SellerStudioView({
     );
     await updateOrderStatusAction({ orderId, orderNumber, status: nextStatus });
     setUpdatingOrderId(null);
+
+    // If seller has not yet answered, randomly pop up when an order is updated/completed (once only)
+    if (typeof window !== "undefined") {
+      const alreadyAnswered = localStorage.getItem("projectkita_seller_rated") === "true";
+      if (!alreadyAnswered) {
+        const isRandom = nextStatus === "COMPLETED" || Math.random() < 0.5;
+        if (isRandom) {
+          setRatingOrderNumber(orderNumber);
+          setTimeout(() => setShowRatingDialog(true), 600);
+        }
+      }
+    }
   }
 
   const openOrders = orderList.filter(
     (o) => o.status !== "COMPLETED" && o.status !== "CANCELLED"
   );
+  const totalGrossIncome = orderList
+    .filter((o) => o.status !== "CANCELLED")
+    .reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
   const total = products.length;
   const active = products.filter((p) => p.status === "ACTIVE").length;
   const needsRestock = products.filter(
@@ -129,7 +175,27 @@ export function SellerStudioView({
           </h1>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Link
+            href="/seller/income"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 text-xs font-bold text-ink hover:bg-paper-deep transition-colors shadow-xs"
+          >
+            <TrendingUp className="h-3.5 w-3.5 text-kita-green" />
+            <span>Income Monitoring</span>
+          </Link>
+
+          <button
+            type="button"
+            onClick={() => {
+              setRatingOrderNumber(undefined);
+              setShowRatingDialog(true);
+            }}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-spark-deep/30 bg-spark-soft/50 px-3.5 text-xs font-bold text-spark-ink hover:bg-spark-soft transition-colors"
+          >
+            <Star className="h-3.5 w-3.5 fill-spark text-spark" />
+            <span>Rate Website</span>
+          </button>
+
           <Link
             href="/seller/settings"
             className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 text-xs font-bold text-ink hover:bg-paper-deep transition-colors"
@@ -231,6 +297,27 @@ export function SellerStudioView({
                 {peso(inventoryValue)}
               </span>
             </div>
+
+            {/* Income Monitoring Quick Tile */}
+            <Link
+              href="/seller/income"
+              className="flex items-center justify-between p-3.5 bg-kita-green-soft/20 hover:bg-kita-green-soft/40 transition-colors group"
+            >
+              <div className="flex flex-col gap-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="eyebrow text-xs text-muted">Income Monitoring</span>
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-kita-green opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-kita-green"></span>
+                  </span>
+                </div>
+                <span className="font-mono text-xl font-bold text-kita-green">
+                  {peso(totalGrossIncome)}
+                </span>
+                <span className="text-[0.6875rem] text-muted">Live Sales &amp; Purchase Tracking →</span>
+              </div>
+              <ArrowUpRight className="h-4 w-4 text-muted group-hover:text-kita-green transition-colors" />
+            </Link>
           </div>
         </aside>
 
@@ -429,6 +516,16 @@ export function SellerStudioView({
         product={productToDelete}
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
+      />
+
+      {/* Website Rating Dialog for Sellers (triggered after order completion / earning income) */}
+      <WebsiteRatingDialog
+        open={showRatingDialog}
+        onOpenChange={setShowRatingDialog}
+        triggerSource="SELLER_INCOME"
+        orderNumber={ratingOrderNumber}
+        userName={store.name}
+        userRole="SELLER"
       />
     </div>
   );

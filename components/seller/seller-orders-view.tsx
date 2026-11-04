@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -23,9 +23,12 @@ import {
   ChevronRight,
   AlertTriangle,
   MessageSquare,
+  Star,
+  TrendingUp,
 } from "lucide-react";
 import { StatusPill, orderStatus } from "@/components/dashboard/status-pill";
 import { updateOrderStatusAction } from "@/app/actions/orders";
+import { WebsiteRatingDialog } from "@/components/ratings/website-rating-dialog";
 
 export interface SellerOrder {
   id: string;
@@ -72,6 +75,30 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
   const [selectedOrderId, setSelectedOrderId] = useState<string>(initialOrders[0]?.id || "");
   const [isUpdating, setIsUpdating] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
+  const [ratingOrderNumber, setRatingOrderNumber] = useState<string | undefined>(undefined);
+
+  // Random pop-up when seller has an order (triggers once only; stops once they are done answering)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const alreadyAnswered = localStorage.getItem("projectkita_seller_rated") === "true";
+      if (alreadyAnswered) return;
+
+      if (orders.length > 0) {
+        // ~50% random chance when seller is viewing incoming orders
+        if (Math.random() < 0.5) {
+          const timer = setTimeout(() => {
+            setRatingOrderNumber(orders[0]?.order_number);
+            setShowRatingDialog(true);
+          }, 1500);
+          return () => clearTimeout(timer);
+        }
+      }
+    } catch (e) {
+      console.warn("Storage check notice:", e);
+    }
+  }, [orders]);
 
   // Active categories
   const pendingOrders = useMemo(() => orders.filter((o) => o.status === "PENDING"), [orders]);
@@ -126,6 +153,18 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
       status: nextStatus,
     });
     setIsUpdating(false);
+
+    // If seller has not yet answered, randomly pop up when an order is updated/completed (once only)
+    if (typeof window !== "undefined") {
+      const alreadyAnswered = localStorage.getItem("projectkita_seller_rated") === "true";
+      if (!alreadyAnswered) {
+        const isRandom = nextStatus === "COMPLETED" || Math.random() < 0.5;
+        if (isRandom) {
+          setRatingOrderNumber(orderNum);
+          setTimeout(() => setShowRatingDialog(true), 600);
+        }
+      }
+    }
   }
 
   function toggleItemChecked(itemId: string) {
@@ -150,6 +189,26 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
         </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              setRatingOrderNumber(undefined);
+              setShowRatingDialog(true);
+            }}
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-spark-deep/30 bg-spark-soft/50 px-3.5 text-xs font-bold text-spark-ink hover:bg-spark-soft transition-colors"
+          >
+            <Star className="h-3.5 w-3.5 fill-spark text-spark" />
+            <span>Rate Website</span>
+          </button>
+
+          <Link
+            href="/seller/income"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 text-xs font-bold text-ink hover:bg-paper transition-colors shadow-xs"
+          >
+            <TrendingUp className="h-3.5 w-3.5 text-kita-green" />
+            <span>Income Monitoring</span>
+          </Link>
+
           <Link
             href="/seller"
             className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-line bg-surface px-3.5 text-xs font-bold text-ink hover:bg-paper transition-colors"
@@ -603,6 +662,16 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
           )}
         </div>
       )}
+
+      {/* Website Rating Dialog for Sellers (triggered after student handoff completion / earning income) */}
+      <WebsiteRatingDialog
+        open={showRatingDialog}
+        onOpenChange={setShowRatingDialog}
+        triggerSource="SELLER_INCOME"
+        orderNumber={ratingOrderNumber}
+        userName={storeName}
+        userRole="SELLER"
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -26,6 +27,7 @@ export function DeleteProductDialog({
   onOpenChange,
   onDeleted,
 }: DeleteProductDialogProps) {
+  const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,12 +42,16 @@ export function DeleteProductDialog({
     setIsPending(false);
 
     if (res.message && !res.success) {
-      setError(res.message);
+      const friendlyError = res.message.includes("violates foreign key constraint")
+        ? "This product has past customer orders and cannot be removed from database history. It has been archived off your storefront instead."
+        : res.message;
+      setError(friendlyError);
       return;
     }
 
     onOpenChange(false);
     onDeleted?.();
+    router.refresh();
   }
 
   return (

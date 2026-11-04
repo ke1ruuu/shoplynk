@@ -4,12 +4,17 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "@/lib/auth/session";
+import { isValidImageUrl } from "@/lib/utils";
 
 const VerificationSchema = z.object({
   studentIdNumber: z.string().trim().min(3, "Please enter your student ID number."),
   program: z.string().trim().min(2, "Please select or enter your academic strand/program."),
   yearLevel: z.string().trim().min(2, "Please select your year level."),
-  idImageUrl: z.string().trim().min(5, "Please provide a photo of your school ID."),
+  idImageUrl: z
+    .string()
+    .trim()
+    .min(5, "Please provide a photo of your school ID.")
+    .refine(isValidImageUrl, "Please provide a valid image URL or upload a clear photo."),
   storeProposal: z.string().trim().optional(),
 });
 

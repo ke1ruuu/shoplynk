@@ -1,11 +1,14 @@
 import React from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Star, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserProfile } from "@/lib/auth/session";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { StatRow } from "@/components/dashboard/stat-row";
 import { Panel } from "@/components/dashboard/panel";
+import { getPlatformRatingsStatsAction } from "@/app/actions/ratings";
 
 export const metadata: Metadata = {
   title: "Campus Analytics — Admin Console",
@@ -81,6 +84,8 @@ export default async function AdminAnalyticsPage() {
   const approvedVerifs = verifs?.filter((v) => v.status === "APPROVED").length || 0;
   const rejectedVerifs = verifs?.filter((v) => v.status === "REJECTED").length || 0;
 
+  const ratingStats = await getPlatformRatingsStatsAction();
+
   return (
     <main className="w-full max-w-[1600px] flex flex-col gap-7 px-4 py-7 sm:px-6 lg:px-8 xl:px-10 transition-all duration-300">
       <PageHeader
@@ -147,6 +152,71 @@ export default async function AdminAnalyticsPage() {
               ]}
             />
           )}
+        </Panel>
+
+        <Panel heading="Website & Platform Satisfaction">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      className={`h-4 w-4 ${
+                        s <= Math.round(ratingStats.overallAverage)
+                          ? "fill-amber-400 text-amber-400"
+                          : "fill-transparent text-line-strong"
+                      }`}
+                    />
+                  ))}
+                </div>
+                <span className="font-mono text-xl font-bold text-ink">
+                  {ratingStats.overallAverage}
+                </span>
+                <span className="text-xs text-muted">/ 5.0</span>
+              </div>
+
+              <Link
+                href="/admin/ratings"
+                className="inline-flex items-center gap-1 text-xs font-bold text-kita-green hover:underline"
+              >
+                <span>Track Details</span>
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+
+            <ShareBar
+              total={ratingStats.totalCount}
+              rows={[
+                {
+                  label: "5-Star Ratings",
+                  value: ratingStats.distribution[5],
+                  bar: "bg-kita-green",
+                  text: "text-kita-green",
+                },
+                {
+                  label: "4-Star Ratings",
+                  value: ratingStats.distribution[4],
+                  bar: "bg-spark",
+                  text: "text-spark-ink",
+                },
+                {
+                  label: "1 to 3 Star Ratings",
+                  value:
+                    ratingStats.distribution[3] +
+                    ratingStats.distribution[2] +
+                    ratingStats.distribution[1],
+                  bar: "bg-line-strong",
+                  text: "text-muted",
+                },
+              ]}
+            />
+
+            <div className="flex items-center justify-between text-xs text-muted pt-2 border-t border-line">
+              <span>{ratingStats.buyerCount} buyers · {ratingStats.sellerCount} sellers</span>
+              <span className="font-semibold text-kita-green">{ratingStats.satisfactionRate}% positive</span>
+            </div>
+          </div>
         </Panel>
 
         <Panel heading="Catalog health">

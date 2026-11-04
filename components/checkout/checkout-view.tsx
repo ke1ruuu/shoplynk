@@ -19,6 +19,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useCart } from "@/lib/cart-context";
+import { WebsiteRatingDialog } from "@/components/ratings/website-rating-dialog";
+import { Star } from "lucide-react";
 import { placeOrderAction } from "@/app/actions/checkout";
 
 const PESO = (n: number) =>
@@ -65,6 +67,7 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<string | null>(null);
+  const [showRatingDialog, setShowRatingDialog] = useState(false);
 
   async function handlePlaceOrder(e: React.FormEvent) {
     e.preventDefault();
@@ -98,6 +101,23 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
     if (result.success && result.orderNumber) {
       clearCart();
       setConfirmedOrderNumber(result.orderNumber);
+
+      // Track order count for buyer: pop up rating once when they have ordered 3 times
+      if (typeof window !== "undefined") {
+        try {
+          const alreadyRated = localStorage.getItem("projectkita_buyer_rated") === "true";
+          const prevCount = Number(localStorage.getItem("projectkita_buyer_order_count") || 0);
+          const newCount = prevCount + 1;
+          localStorage.setItem("projectkita_buyer_order_count", String(newCount));
+
+          // Pop out rating once if they have ordered 3 times and have not answered yet
+          if (!alreadyRated && newCount >= 3) {
+            setTimeout(() => setShowRatingDialog(true), 700);
+          }
+        } catch (storageErr) {
+          console.warn("Notice: buyer order counter error:", storageErr);
+        }
+      }
     } else {
       setErrorMsg(result.error || "Failed to place order. Please try again.");
     }
@@ -150,6 +170,21 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
             </div>
           </div>
 
+          {/* Quick Rate Website Prompt */}
+          <div className="w-full flex items-center justify-between rounded-2xl border border-spark-deep/30 bg-spark-soft/40 px-4 py-3 text-xs text-spark-ink">
+            <div className="flex items-center gap-2">
+              <Star className="h-4 w-4 text-spark fill-spark flex-shrink-0" />
+              <span className="font-medium">How was your website checkout experience?</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowRatingDialog(true)}
+              className="rounded-xl bg-surface px-3 py-1.5 text-xs font-bold text-ink border border-line shadow-xs hover:bg-paper transition-colors flex-shrink-0"
+            >
+              Rate Platform ⭐
+            </button>
+          </div>
+
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full pt-2">
             <Link
               href="/protected/orders"
@@ -165,6 +200,14 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
               <span>Continue Shopping</span>
             </Link>
           </div>
+
+          <WebsiteRatingDialog
+            open={showRatingDialog}
+            onOpenChange={setShowRatingDialog}
+            triggerSource="BUYER_PURCHASE"
+            orderNumber={confirmedOrderNumber || undefined}
+            userName={buyerName}
+          />
         </div>
       </div>
     );

@@ -603,9 +603,63 @@ export async function deleteProductAction(productId: string): Promise<ActionStat
     return { message: "You do not have permission to delete this product." };
   }
 
+  // Check if product is referenced in existing customer orders (order history constraint)
+  const { count: orderCount } = await supabase
+    .from("order_items")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId);
+
+  if (orderCount && orderCount > 0) {
+    // Cannot hard-delete row due to foreign key order history constraint.
+    // Safely archive: remove from active storefront, clear stock, and purge from shopping carts & favorites.
+    await supabase.from("cart_items").delete().eq("product_id", productId);
+    await supabase.from("favorite_items").delete().eq("product_id", productId);
+
+    const { error: archiveError } = await supabase
+      .from("products")
+      .update({
+        status: "ARCHIVED",
+        stock: 0,
+      })
+      .eq("id", productId);
+
+    if (archiveError) {
+      return { message: archiveError.message };
+    }
+
+    await invalidateCache("catalog:products");
+    revalidatePath("/seller");
+    revalidatePath("/protected/marketplace");
+    return {
+      success: true,
+      message: "Product removed from your storefront and safely archived to preserve customer order receipts.",
+    };
+  }
+
+  // If no past orders exist, clean up related entries first then hard-delete product
+  await supabase.from("cart_items").delete().eq("product_id", productId);
+  await supabase.from("favorite_items").delete().eq("product_id", productId);
+  await supabase.from("product_images").delete().eq("product_id", productId);
+  await supabase.from("reviews").delete().eq("product_id", productId);
+
   const { error } = await supabase.from("products").delete().eq("id", productId);
 
   if (error) {
+    // If a foreign key constraint is encountered as fallback, gracefully archive
+    if (error.code === "23503" || error.message.includes("violates foreign key constraint")) {
+      await supabase
+        .from("products")
+        .update({ status: "ARCHIVED", stock: 0 })
+        .eq("id", productId);
+
+      await invalidateCache("catalog:products");
+      revalidatePath("/seller");
+      revalidatePath("/protected/marketplace");
+      return {
+        success: true,
+        message: "Product removed from your storefront and archived to preserve order history.",
+      };
+    }
     return { message: error.message };
   }
 

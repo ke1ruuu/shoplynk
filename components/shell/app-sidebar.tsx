@@ -24,6 +24,8 @@ import {
   Clock,
   Heart,
   MessageSquare,
+  Star,
+  TrendingUp,
 } from "lucide-react";
 import { Logo } from "@/components/common/logo";
 import { useSidebar } from "./sidebar-context";
@@ -128,10 +130,12 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
     (pathname.startsWith("/seller/products") &&
       !pathname.startsWith("/seller/settings"));
   const isSellerOrdersActive = pathname.startsWith("/seller/orders");
+  const isSellerIncomeActive = pathname.startsWith("/seller/income");
   const isSellerSettingsActive = pathname.startsWith("/seller/settings");
   const isVerificationsActive =
     pathname === "/admin" || pathname === "/admin/verifications";
   const isStoresActive = pathname.startsWith("/admin/stores");
+  const isRatingsActive = pathname.startsWith("/admin/ratings");
   const isAnalyticsActive = pathname.startsWith("/admin/analytics");
 
   const isCollapsedView = collapsed && !mobileOpen;
@@ -317,6 +321,24 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                 </Link>
 
                 <Link
+                  href="/admin/ratings"
+                  onClick={() => setMobileOpen(false)}
+                  className={`group flex items-center rounded-xl transition-all ${
+                    isCollapsedView
+                      ? "h-11 w-11 mx-auto justify-center"
+                      : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                  } ${
+                    isRatingsActive
+                      ? "bg-kita-green text-white shadow-flyer"
+                      : "text-muted hover:bg-paper hover:text-ink"
+                  }`}
+                  title="Platform Ratings"
+                >
+                  <Star className={`h-5 w-5 flex-shrink-0 ${isRatingsActive ? "text-white fill-white" : "text-amber-500 fill-amber-500/20"} transition-transform group-hover:scale-105`} />
+                  {!isCollapsedView && <span>Platform Ratings</span>}
+                </Link>
+
+                <Link
                   href="/admin/analytics"
                   onClick={() => setMobileOpen(false)}
                   className={`group flex items-center rounded-xl transition-all ${
@@ -493,6 +515,27 @@ export function AppSidebar({ user, profile }: AppSidebarProps) {
                           className={`h-5 w-5 flex-shrink-0 ${isSellerOrdersActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`}
                         />
                         {!isCollapsedView && <span>Orders</span>}
+                      </Link>
+
+                      {/* Income Monitoring */}
+                      <Link
+                        href="/seller/income"
+                        onClick={() => setMobileOpen(false)}
+                        className={`group flex items-center rounded-xl transition-all ${
+                          isCollapsedView
+                            ? "h-11 w-11 mx-auto justify-center"
+                            : "gap-3 px-3.5 py-2.5 text-sm font-semibold"
+                        } ${
+                          isSellerIncomeActive
+                            ? "bg-kita-green text-white shadow-flyer"
+                            : "text-muted hover:bg-paper hover:text-ink"
+                        }`}
+                        title="Income Monitoring"
+                      >
+                        <TrendingUp
+                          className={`h-5 w-5 flex-shrink-0 ${isSellerIncomeActive ? "text-white" : "text-muted"} transition-transform group-hover:scale-105`}
+                        />
+                        {!isCollapsedView && <span>Income Monitoring</span>}
                       </Link>
 
                       {/* Store Settings */}

@@ -23,6 +23,10 @@ import {
   UserX,
   Trash2,
   ShieldAlert,
+  ExternalLink,
+  AlertTriangle,
+  FileQuestion,
+  ImageOff,
 } from "lucide-react";
 import {
   Dialog,
@@ -38,6 +42,7 @@ import {
 } from "@/app/actions/verification";
 import { RejectDialog } from "./reject-dialog";
 import { createClient } from "@/lib/supabase/client";
+import { isValidImageUrl } from "@/lib/utils";
 
 export interface AdminVerificationItem {
   id: string;
@@ -62,6 +67,82 @@ interface VerificationReviewTableProps {
 }
 
 const PAGE_SIZE = 8;
+
+function AdminIdCardPreview({ imageUrl }: { imageUrl?: string | null }) {
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    setLoadError(false);
+  }, [imageUrl]);
+
+  if (!imageUrl || !imageUrl.trim()) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-4 text-center text-xs text-muted">
+        <FileQuestion className="h-8 w-8 text-muted/60" />
+        <span>No student ID photo was attached.</span>
+      </div>
+    );
+  }
+
+  const isValid = isValidImageUrl(imageUrl);
+
+  if (!isValid || loadError) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-2.5 bg-paper p-4 text-center text-xs">
+        <AlertTriangle className="h-8 w-8 text-amber-500" />
+        <div className="flex flex-col gap-1 max-w-sm">
+          <span className="font-bold text-ink">
+            {loadError ? "Unable to load student ID image" : "Invalid ID image format"}
+          </span>
+          <p className="text-[11px] text-muted leading-relaxed">
+            {loadError
+              ? "The remote server failed to provide the image file."
+              : "The applicant submitted an invalid or unformatted image URL string."}
+          </p>
+          <div className="mt-1 rounded-md bg-paper-deep px-2.5 py-1 font-mono text-[11px] text-muted break-all border border-line">
+            {imageUrl.length > 100 ? `${imageUrl.slice(0, 100)}...` : imageUrl}
+          </div>
+        </div>
+        {isValid && (
+          <a
+            href={imageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-kita-red hover:underline"
+          >
+            <span>Attempt direct link</span>
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative h-full w-full">
+      <Image
+        src={imageUrl}
+        alt="Student ID Card"
+        fill
+        unoptimized
+        onError={() => setLoadError(true)}
+        className="object-contain p-2"
+      />
+      {imageUrl.startsWith("http") && (
+        <a
+          href={imageUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="absolute top-2 right-2 inline-flex items-center gap-1 rounded-lg bg-surface/90 backdrop-blur-md px-2.5 py-1 text-[11px] font-semibold text-ink border border-line shadow-xs hover:bg-surface transition-colors"
+          title="Open full image in new tab"
+        >
+          <ExternalLink className="h-3 w-3 text-muted" />
+          <span>Full size</span>
+        </a>
+      )}
+    </div>
+  );
+}
 
 export function VerificationReviewTable({
   initialVerifications,
@@ -498,18 +579,7 @@ export function VerificationReviewTable({
               <div className="flex flex-col gap-1.5">
                 <span className="text-xs font-bold text-ink">Submitted Student ID Card:</span>
                 <div className="relative h-64 sm:h-72 w-full overflow-hidden rounded-2xl border border-line bg-paper-deep shadow-inner">
-                  {selectedVerification.id_image_url ? (
-                    <Image
-                      src={selectedVerification.id_image_url}
-                      alt="Student ID Card"
-                      fill
-                      className="object-contain p-2"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-muted">
-                      No ID photo provided
-                    </div>
-                  )}
+                  <AdminIdCardPreview imageUrl={selectedVerification.id_image_url} />
                 </div>
               </div>
 
