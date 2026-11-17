@@ -711,7 +711,7 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
                       <span>Campus Pickup Spot</span>
                     </span>
                     <span className="font-bold text-xs text-ink leading-snug">
-                      {activeOrder.pickupLocation || "LYFJSHS Main Canteen Handoff Area"}
+                      {activeOrder.pickupLocation || "School Ground"}
                     </span>
                     <span className="text-xs text-muted">
                       Look for {activeOrder.storeName} banner
@@ -724,7 +724,7 @@ export function OrdersView({ displayName, orders: initialOrders, recommendedProd
                       <span>Break Window Schedule</span>
                     </span>
                     <span className="font-bold text-xs text-ink leading-snug">
-                      {activeOrder.preferredTime || "Recess Break (9:45 AM - 10:15 AM)"}
+                      {activeOrder.preferredTime || "1st Recess Morning Shift (8:20 AM - 8:40 AM)"}
                     </span>
                     <span className="text-xs text-muted">
                       Show Order ID {activeOrder.order_number} upon handoff

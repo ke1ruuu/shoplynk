@@ -14,14 +14,10 @@ import {
   Clock,
   Sparkles,
   Store,
-  CreditCard,
   Lock,
   FileText,
   Check,
   Building2,
-  QrCode,
-  Receipt,
-  Wallet,
   UploadCloud,
   Camera,
   Trash2,
@@ -53,26 +49,21 @@ export function VerificationForm({
   userEmail?: string;
 }) {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
   const [studentId, setStudentId] = useState("");
   const [strand, setStrand] = useState(STRANDS[0]);
   const [yearLevel, setYearLevel] = useState("Grade 12");
   const [docType, setDocType] = useState<"id" | "cor">("id");
   const [idImageUrl, setIdImageUrl] = useState("");
   const [storeProposal, setStoreProposal] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"gcash" | "cash">("gcash");
-  const [paymentRefNumber, setPaymentRefNumber] = useState("");
-  const [paymentReceiptUrl, setPaymentReceiptUrl] = useState("");
   const [pledgeAccepted, setPledgeAccepted] = useState(false);
   const [step1Error, setStep1Error] = useState("");
   const [step3Error, setStep3Error] = useState("");
 
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
-  const receiptFileInputRef = React.useRef<HTMLInputElement | null>(null);
   const [fileName, setFileName] = useState("");
   const [fileSize, setFileSize] = useState("");
   const [isDragging, setIsDragging] = useState(false);
-  const [receiptFileName, setReceiptFileName] = useState("");
 
   const [state, formAction, isPending] = useActionState<
     VerificationActionState,
@@ -136,20 +127,6 @@ export function VerificationForm({
     }
   };
 
-  const handleReceiptFileProcess = (file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    if (file.size > 10 * 1024 * 1024) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        setPaymentReceiptUrl(reader.result);
-        setReceiptFileName(file.name);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
   function handleBack() {
     if (typeof window !== "undefined" && window.history.length > 1) {
       router.back();
@@ -171,19 +148,6 @@ export function VerificationForm({
     setCurrentStep(3);
   }
 
-  function handleProceedToStep4() {
-    if (!idImageUrl.trim()) {
-      setStep3Error(
-        docType === "id"
-          ? "Please upload a photo of your Student ID."
-          : "Please upload a photo of your Certificate of Registration (COR)."
-      );
-      return;
-    }
-    setStep3Error("");
-    setCurrentStep(4);
-  }
-
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8 flex flex-col gap-6">
       {/* 1. Top Navigation & Verification Badge */}
@@ -200,7 +164,7 @@ export function VerificationForm({
 
         <span className="inline-flex items-center gap-1.5 rounded-full bg-kita-green-soft px-3 py-1 text-xs font-bold text-kita-green">
           <ShieldCheck className="h-3.5 w-3.5" />
-          <span>LYFJSHS Merchant Accreditation Program</span>
+          <span>LYFJSHS Student Merchant Program</span>
         </span>
       </div>
 
@@ -210,7 +174,7 @@ export function VerificationForm({
           Student Merchant Verification
         </h1>
         <p className="text-sm sm:text-base text-muted max-w-2xl leading-relaxed">
-          Complete the 4-step accreditation process to verify your enrollment at{" "}
+          Complete the 3-step verification process to verify your enrollment at{" "}
           <strong className="text-ink">Luis Y. Ferrer Jr. Senior High School</strong> and
           activate your official campus seller studio.
         </p>
@@ -236,14 +200,14 @@ export function VerificationForm({
 
       {/* 2. Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-2">
-        {/* Left Sticky Rail (5 Cols) — 4-Step Interactive Roadmap & Trust Cards */}
+        {/* Left Sticky Rail (5 Cols) — 3-Step Interactive Roadmap & Trust Cards */}
         <aside className="lg:col-span-5 flex flex-col gap-6 lg:sticky lg:top-6">
           {/* Verification Stepper Card */}
           <div className="flex flex-col gap-5 rounded-2xl border border-line bg-surface p-6 shadow-xs">
             <div className="flex items-center justify-between border-b border-line pb-3">
-              <span className="eyebrow text-xs text-muted">Accreditation Roadmap</span>
+              <span className="eyebrow text-xs text-muted">Verification Roadmap</span>
               <span className="font-mono text-xs text-kita-green font-bold">
-                Step {currentStep} of 4
+                Step {currentStep} of 3
               </span>
             </div>
 
@@ -340,50 +304,22 @@ export function VerificationForm({
                   </span>
                 </div>
               </button>
-
-              {/* Step 4: Accreditation Fee Payment */}
-              <button
-                type="button"
-                onClick={() => studentId && idImageUrl && setCurrentStep(4)}
-                disabled={!studentId || !idImageUrl}
-                className={`flex items-start gap-3 p-2.5 rounded-xl text-left transition-all ${
-                  currentStep === 4
-                    ? "bg-kita-green-soft/60 border border-kita-green/30 cursor-pointer"
-                    : studentId && idImageUrl
-                    ? "hover:bg-paper cursor-pointer"
-                    : "opacity-40 cursor-not-allowed"
-                }`}
-              >
-                <div
-                  className={`flex h-6 w-6 items-center justify-center rounded-full font-mono font-bold text-xs shadow-xs flex-shrink-0 mt-0.5 ${
-                    currentStep === 4
-                      ? "bg-kita-green text-white"
-                      : "bg-paper border border-line text-muted"
-                  }`}
-                >
-                  4
-                </div>
-                <div className="flex flex-col">
-                  <span className="font-bold text-ink text-sm">4. Admin Accreditation Fee</span>
-                  <span className="text-muted text-xs leading-relaxed">
-                    ₱50.00 verification fee to school admin
-                  </span>
-                </div>
-              </button>
             </div>
           </div>
 
-          {/* Fee & SLA Summary Card */}
+          {/* Verification & SLA Summary Card */}
           <div className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-6 shadow-xs">
             <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2 text-ink font-bold text-sm">
-                <Receipt className="h-4 w-4 text-kita-green" />
-                <span>Accreditation Fee</span>
+                <ShieldCheck className="h-4 w-4 text-kita-green" />
+                <span>Campus Verification</span>
               </div>
-              <span className="font-mono text-base font-bold text-kita-green">₱50.00</span>
+              <span className="font-mono text-xs font-bold text-kita-green bg-kita-green-soft px-2.5 py-1 rounded-full">
+                100% Free
+              </span>
             </div>
             <p className="text-xs text-muted leading-relaxed">
-              The one-time ₱50.00 accreditation fee covers campus administration verification, physical booth pass verification, and merchant registry listing for S.Y. 2025–2026.
+              Student seller verification is completely free. Applications are reviewed by school administrators to ensure a safe, legitimate campus marketplace for all students.
             </p>
 
             <div className="flex flex-col gap-2 pt-2 border-t border-line text-xs">
@@ -395,6 +331,10 @@ export function VerificationForm({
                 <Check className="h-3.5 w-3.5 text-kita-green flex-shrink-0" />
                 <span>Official student seller certification</span>
               </div>
+              <div className="flex items-center gap-2 text-ink">
+                <Check className="h-3.5 w-3.5 text-kita-green flex-shrink-0" />
+                <span>Zero accreditation or registration fees</span>
+              </div>
             </div>
           </div>
 
@@ -402,7 +342,7 @@ export function VerificationForm({
           <div className="flex items-start gap-3 rounded-2xl border border-line bg-paper p-4 text-xs text-muted">
             <Lock className="h-4 w-4 text-kita-green mt-0.5 flex-shrink-0" />
             <p className="leading-relaxed">
-              Payment references and student records are encrypted and reviewed strictly by authorized LYFJSHS Treasury administrators.
+              Student records and ID photos are encrypted and reviewed strictly by authorized LYFJSHS administrators.
             </p>
           </div>
         </aside>
@@ -419,9 +359,6 @@ export function VerificationForm({
             <input type="hidden" name="yearLevel" value={yearLevel} />
             <input type="hidden" name="storeProposal" value={storeProposal} />
             <input type="hidden" name="idImageUrl" value={idImageUrl} />
-            <input type="hidden" name="paymentMethod" value={paymentMethod} />
-            <input type="hidden" name="paymentRefNumber" value={paymentRefNumber} />
-            <input type="hidden" name="paymentReceiptUrl" value={paymentReceiptUrl} />
 
             {/* STEP 1: Academic Credentials */}
             {currentStep === 1 && (
@@ -431,7 +368,7 @@ export function VerificationForm({
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-kita-green text-white font-mono text-xs font-bold">
                       1
                     </span>
-                    <span>Step 1 of 4</span>
+                    <span>Step 1 of 3</span>
                   </div>
                   <h2 className="font-display text-xl font-extrabold text-ink">
                     Academic Enrollment Record
@@ -530,7 +467,7 @@ export function VerificationForm({
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-kita-green text-white font-mono text-xs font-bold">
                       2
                     </span>
-                    <span>Step 2 of 4</span>
+                    <span>Step 2 of 3</span>
                   </div>
                   <h2 className="font-display text-xl font-extrabold text-ink">
                     Campus Storefront Concept
@@ -587,7 +524,7 @@ export function VerificationForm({
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-kita-green text-white font-mono text-xs font-bold">
                       3
                     </span>
-                    <span>Step 3 of 4</span>
+                    <span>Step 3 of 3 (Final Step)</span>
                   </div>
                   <h2 className="font-display text-xl font-extrabold text-ink">
                     Official Document Inspection
@@ -752,188 +689,6 @@ export function VerificationForm({
                   </div>
                 )}
 
-                {/* Step 3 Actions */}
-                <div className="flex items-center justify-between pt-4 border-t border-line">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(2)}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-4 py-2 text-xs font-bold text-ink hover:bg-paper-deep transition-colors cursor-pointer"
-                  >
-                    <ArrowLeft className="h-3.5 w-3.5" />
-                    <span>Back to Step 2</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleProceedToStep4}
-                    className="inline-flex items-center gap-2 rounded-xl bg-kita-green px-6 py-2.5 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep active:scale-95 transition-all cursor-pointer"
-                  >
-                    <span>Proceed to Accreditation Fee</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* STEP 4: Accreditation Fee Payment (Final Step) */}
-            {currentStep === 4 && (
-              <div className="flex flex-col gap-6 animate-in fade-in duration-200">
-                <div className="flex flex-col gap-1 pb-4 border-b border-line">
-                  <div className="flex items-center gap-2 text-kita-green font-bold text-xs">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-kita-green text-white font-mono text-xs font-bold">
-                      4
-                    </span>
-                    <span>Step 4 of 4 (Final Step)</span>
-                  </div>
-                  <h2 className="font-display text-xl font-extrabold text-ink">
-                    School Admin Accreditation Fee
-                  </h2>
-                  <p className="text-xs text-muted">
-                    Pay the ₱50.00 merchant accreditation fee to the School Treasury to finalize your verification.
-                  </p>
-                </div>
-
-                {/* Payment Option Selector */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("gcash")}
-                    className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      paymentMethod === "gcash"
-                        ? "border-kita-green bg-kita-green-soft text-kita-green shadow-xs"
-                        : "border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep"
-                    }`}
-                  >
-                    <Wallet className="h-4 w-4" />
-                    <span>GCash Transfer (Recommended)</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod("cash")}
-                    className={`flex items-center justify-center gap-2 p-3.5 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
-                      paymentMethod === "cash"
-                        ? "border-kita-green bg-kita-green-soft text-kita-green shadow-xs"
-                        : "border-line bg-paper text-muted hover:text-ink hover:bg-paper-deep"
-                    }`}
-                  >
-                    <Building2 className="h-4 w-4" />
-                    <span>Cash at Treasury (Room 204)</span>
-                  </button>
-                </div>
-
-                {/* GCash Payment Instruction Box */}
-                {paymentMethod === "gcash" ? (
-                  <div className="flex flex-col gap-4 rounded-2xl border border-kita-green/30 bg-kita-green-soft/40 p-5">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-ink font-bold text-xs">
-                        <QrCode className="h-4 w-4 text-kita-green" />
-                        <span>LYFJSHS Treasury GCash Account</span>
-                      </div>
-                      <span className="font-mono text-sm font-extrabold text-kita-green">₱50.00</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-kita-green/20 text-xs">
-                      <div className="flex flex-col gap-0.5 bg-surface/80 p-3 rounded-xl border border-kita-green/20">
-                        <span className="text-muted font-semibold">Account Name</span>
-                        <span className="font-bold text-ink">LYFJSHS Treasury Office</span>
-                      </div>
-                      <div className="flex flex-col gap-0.5 bg-surface/80 p-3 rounded-xl border border-kita-green/20">
-                        <span className="text-muted font-semibold">GCash Mobile Number</span>
-                        <span className="font-mono font-bold text-kita-green text-sm">0917-829-4102</span>
-                      </div>
-                    </div>
-
-                    <p className="text-xs text-muted leading-relaxed">
-                      Please send <strong>₱50.00</strong> to the GCash number above and input your 13-digit transaction reference number below.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-3 rounded-2xl border border-line bg-paper p-5 text-xs">
-                    <div className="flex items-center gap-2 font-bold text-ink">
-                      <Building2 className="h-4 w-4 text-kita-green" />
-                      <span>Cash Payment Guidelines</span>
-                    </div>
-                    <p className="text-muted leading-relaxed">
-                      Visit the <strong>LYFJSHS School Treasury (Room 204, 2nd Floor Admin Building)</strong> and pay the ₱50.00 Student Merchant Accreditation Fee during recess or lunch. You will receive an Official Receipt (OR) Number.
-                    </p>
-                  </div>
-                )}
-
-                {/* Reference Number Input */}
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="payment-ref" className="text-xs font-bold text-ink">
-                    {paymentMethod === "gcash" ? "GCash Reference Number" : "Official Receipt (OR) Number"}{" "}
-                    <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="payment-ref"
-                    value={paymentRefNumber}
-                    onChange={(e) => setPaymentRefNumber(e.target.value)}
-                    placeholder={paymentMethod === "gcash" ? "e.g. 1029 4820 1928" : "e.g. OR-2026-8492"}
-                    required
-                    className="h-11 rounded-xl font-mono text-xs bg-paper border-line focus:bg-surface transition-colors"
-                  />
-                  <span className="text-xs text-muted">
-                    This reference number will be verified by the school administrator before approving your account.
-                  </span>
-                </div>
-
-                {/* Payment Receipt Image (Optional) */}
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="payment-proof" className="text-xs font-bold text-ink">
-                    Payment Receipt Screenshot <span className="text-muted">(Optional)</span>
-                  </Label>
-                  <input
-                    ref={receiptFileInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleReceiptFileProcess(file);
-                    }}
-                  />
-                  {paymentReceiptUrl ? (
-                    <div className="flex items-center justify-between p-3 rounded-xl border border-line bg-paper text-xs">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle2 className="h-4 w-4 text-kita-green" />
-                        <span className="font-bold text-ink truncate max-w-xs">
-                          {receiptFileName || "Receipt_Screenshot.jpg"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => receiptFileInputRef.current?.click()}
-                          className="text-xs text-kita-green hover:underline font-semibold cursor-pointer"
-                        >
-                          Change
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPaymentReceiptUrl("");
-                            setReceiptFileName("");
-                          }}
-                          className="text-xs text-destructive hover:underline font-semibold cursor-pointer"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => receiptFileInputRef.current?.click()}
-                      className="flex items-center justify-center gap-2 p-3.5 rounded-xl border-2 border-dashed border-line bg-paper hover:bg-paper-deep text-xs font-semibold text-muted hover:text-ink transition-colors cursor-pointer"
-                    >
-                      <ImagePlus className="h-4 w-4 text-kita-green" />
-                      <span>Upload GCash or Official Receipt Screenshot (Optional)</span>
-                    </button>
-                  )}
-                </div>
-
                 {/* DepEd Student Honor Pledge Checkbox */}
                 <div className="flex flex-col gap-3 pt-3 border-t border-line">
                   <label className="flex items-start gap-3 cursor-pointer group">
@@ -946,29 +701,29 @@ export function VerificationForm({
                     />
                     <span className="text-xs text-muted leading-relaxed group-hover:text-ink transition-colors">
                       I certify under the <strong className="text-ink">DepEd Student Honor Code</strong>{" "}
-                      that all submitted credentials and payment details are legitimate and correspond to my enrollment
+                      that all submitted credentials and document scans are legitimate and correspond to my active enrollment
                       at Luis Y. Ferrer Jr. Senior High School.
                     </span>
                   </label>
                 </div>
 
-                {/* Step 4 Actions */}
+                {/* Step 3 Actions (Final Step) */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-line">
                   <button
                     type="button"
-                    onClick={() => setCurrentStep(3)}
+                    onClick={() => setCurrentStep(2)}
                     className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-paper px-4 py-2 text-xs font-bold text-ink hover:bg-paper-deep transition-colors cursor-pointer"
                   >
                     <ArrowLeft className="h-3.5 w-3.5" />
-                    <span>Back to Step 3</span>
+                    <span>Back to Step 2</span>
                   </button>
 
                   <button
                     type="submit"
-                    disabled={isPending || !pledgeAccepted || !paymentRefNumber.trim()}
+                    disabled={isPending || !idImageUrl.trim() || !pledgeAccepted}
                     className="inline-flex items-center justify-center gap-2 rounded-xl bg-kita-green px-6 py-2.5 text-xs font-bold text-white shadow-flyer hover:bg-kita-green-deep active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
                   >
-                    <span>{isPending ? "Submitting Application…" : "Submit Verification & Payment for Review"}</span>
+                    <span>{isPending ? "Submitting Application…" : "Submit Verification Application"}</span>
                     <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>

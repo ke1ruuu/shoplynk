@@ -170,28 +170,39 @@ export function IncomeMonitoringView({
   // Break-time slot breakdown
   const breakSlotBreakdown = useMemo(() => {
     const slots: Record<string, { label: string; total: number; count: number }> = {
-      recess: { label: "Recess Break (9:45 AM - 10:15 AM)", total: 0, count: 0 },
-      lunch: { label: "Lunch Break (11:45 AM - 12:45 PM)", total: 0, count: 0 },
-      dismissal: { label: "Dismissal (4:30 PM - 5:15 PM)", total: 0, count: 0 },
-      other: { label: "Flexible Break Handoff", total: 0, count: 0 },
+      m_recess_1: { label: "1st Recess Morning (8:20 AM - 8:40 AM)", total: 0, count: 0 },
+      m_recess_2: { label: "2nd Recess Morning (9:30 AM - 9:50 AM)", total: 0, count: 0 },
+      lunch: { label: "Lunch Break / Dismissal (12:10 PM - 12:40 PM)", total: 0, count: 0 },
+      a_recess_1: { label: "1st Recess Afternoon (3:00 PM - 3:20 PM)", total: 0, count: 0 },
+      a_recess_2: { label: "2nd Recess Afternoon (4:10 PM - 4:30 PM)", total: 0, count: 0 },
+      custom: { label: "Buyer Preferred / Custom Time", total: 0, count: 0 },
     };
 
     nonCancelledOrders.forEach((o) => {
       const pref = (o.preferred_time || "").toLowerCase();
       const amt = Number(o.total_amount || 0);
 
-      if (pref.includes("recess")) {
-        slots.recess.total += amt;
-        slots.recess.count += 1;
-      } else if (pref.includes("lunch")) {
+      if (pref.includes("1st recess") && pref.includes("morning")) {
+        slots.m_recess_1.total += amt;
+        slots.m_recess_1.count += 1;
+      } else if (pref.includes("2nd recess") && pref.includes("morning")) {
+        slots.m_recess_2.total += amt;
+        slots.m_recess_2.count += 1;
+      } else if (pref.includes("1st recess") && pref.includes("afternoon")) {
+        slots.a_recess_1.total += amt;
+        slots.a_recess_1.count += 1;
+      } else if (pref.includes("2nd recess") && pref.includes("afternoon")) {
+        slots.a_recess_2.total += amt;
+        slots.a_recess_2.count += 1;
+      } else if (pref.includes("lunch") || pref.includes("dismissal") || pref.includes("12:10")) {
         slots.lunch.total += amt;
         slots.lunch.count += 1;
-      } else if (pref.includes("dismissal") || pref.includes("after class")) {
-        slots.dismissal.total += amt;
-        slots.dismissal.count += 1;
+      } else if (pref.includes("recess")) {
+        slots.m_recess_1.total += amt;
+        slots.m_recess_1.count += 1;
       } else {
-        slots.other.total += amt;
-        slots.other.count += 1;
+        slots.custom.total += amt;
+        slots.custom.count += 1;
       }
     });
 
@@ -419,9 +430,7 @@ export function IncomeMonitoringView({
           <div className="flex items-center justify-between rounded-xl bg-paper/60 p-3 text-xs border border-line mt-1">
             <span className="text-muted">Peak Revenue Window:</span>
             <span className="font-bold text-ink">
-              {breakSlotBreakdown.recess.total >= breakSlotBreakdown.lunch.total
-                ? "Recess Break (Morning Rush)"
-                : "Lunch Break (Noon Rush)"}
+              {Object.values(breakSlotBreakdown).reduce((max, s) => (s.total > max.total ? s : max), { label: "1st Recess Morning", total: 0 }).label}
             </span>
           </div>
         </div>

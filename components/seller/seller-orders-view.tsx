@@ -610,7 +610,7 @@ export function SellerOrdersView({ storeName, orders: initialOrders }: SellerOrd
                       <span>Break Window Schedule</span>
                     </span>
                     <span className="font-bold text-xs text-ink">
-                      {activeOrder.preferred_time || "Recess Break (9:45 AM - 10:15 AM)"}
+                      {activeOrder.preferred_time || "1st Recess Morning Shift (8:20 AM - 8:40 AM)"}
                     </span>
                   </div>
                 </div>

@@ -8,7 +8,6 @@ import {
   ArrowLeft,
   MapPin,
   Clock,
-  CreditCard,
   Banknote,
   ShieldCheck,
   CheckCircle2,
@@ -18,6 +17,7 @@ import {
   ShoppingBag,
   Sparkles,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useCart } from "@/lib/cart-context";
 import { WebsiteRatingDialog } from "@/components/ratings/website-rating-dialog";
 import { Star } from "lucide-react";
@@ -28,31 +28,48 @@ const PESO = (n: number) =>
 
 const CAMPUS_PICKUP_LOCATIONS = [
   {
-    id: "main_canteen",
-    name: "Main Canteen Handoff Area",
-    detail: "Near Table 4 / Snack Booths",
+    id: "school_ground",
+    name: "School Ground",
+    detail: "Main Campus Grounds / Quadrangle",
   },
   {
-    id: "bldg_a",
-    name: "Building A (Senior High Hallway)",
-    detail: "2nd Floor Main Staircase Landing",
-  },
-  {
-    id: "bldg_b",
-    name: "Building B (Room 204)",
-    detail: "Tech-Voc & ABM Corridor",
-  },
-  {
-    id: "student_lounge",
-    name: "Student Council Lounge",
-    detail: "Ground Floor Activity Hall",
+    id: "custom_location",
+    name: "Custom / Preferred Location",
+    detail: "Specify your own meeting spot",
   },
 ];
 
 const BREAK_TIME_SLOTS = [
-  { id: "recess", label: "Recess Break", time: "9:45 AM – 10:15 AM" },
-  { id: "lunch", label: "Lunch Break", time: "11:45 AM – 12:45 PM" },
-  { id: "dismissal", label: "Dismissal / After Class", time: "4:30 PM – 5:15 PM" },
+  {
+    id: "m_recess_1",
+    label: "1st Recess Morning Shift",
+    time: "8:20 AM - 8:40 AM",
+  },
+  {
+    id: "m_recess_2",
+    label: "2nd Recess Morning Shift",
+    time: "9:30 AM - 9:50 AM",
+  },
+  {
+    id: "lunch_dismissal",
+    label: "Lunch Break/Class Dismissal",
+    time: "12:10 PM - 12:40 PM",
+  },
+  {
+    id: "a_recess_1",
+    label: "1st Recess Afternoon Shift",
+    time: "3:00 PM - 3:20 PM",
+  },
+  {
+    id: "a_recess_2",
+    label: "2nd Recess Afternoon Shift",
+    time: "4:10 PM - 4:30 PM",
+  },
+  {
+    id: "custom_time",
+    label: "Custom / Preferred Time",
+    time: "Specify your own schedule",
+  },
 ];
 
 export function CheckoutView({ buyerName }: { buyerName: string }) {
@@ -60,23 +77,52 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
   const { items, subtotal, clearCart, itemsByStore } = useCart();
 
   const [selectedLocation, setSelectedLocation] = useState(CAMPUS_PICKUP_LOCATIONS[0].name);
+  const [customLocation, setCustomLocation] = useState("");
+
   const [selectedSlot, setSelectedSlot] = useState(BREAK_TIME_SLOTS[0].label);
-  const [paymentMethod, setPaymentMethod] = useState<"CASH_ON_PICKUP" | "GCASH">("CASH_ON_PICKUP");
-  const [gcashRef, setGcashRef] = useState("");
+  const [customTime, setCustomTime] = useState("");
+
+  const paymentMethod = "CASH_ON_PICKUP" as const;
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmedOrderNumber, setConfirmedOrderNumber] = useState<string | null>(null);
+  const [confirmedDetails, setConfirmedDetails] = useState<{
+    location: string;
+    schedule: string;
+  } | null>(null);
   const [showRatingDialog, setShowRatingDialog] = useState(false);
 
   async function handlePlaceOrder(e: React.FormEvent) {
     e.preventDefault();
     if (items.length === 0) return;
 
-    if (paymentMethod === "GCASH" && !gcashRef.trim()) {
-      setErrorMsg("Please enter your 13-digit GCash Reference Number.");
+    const isCustomLocation = selectedLocation === "Custom / Preferred Location";
+
+    if (isCustomLocation && !customLocation.trim()) {
+      setErrorMsg("Please input your preferred pickup location.");
       return;
     }
+
+    const isCustomTime = selectedSlot === "Custom / Preferred Time";
+
+    if (isCustomTime && !customTime.trim()) {
+      setErrorMsg("Please input your preferred pickup time.");
+      return;
+    }
+
+    const finalLocation = isCustomLocation
+      ? customLocation.trim()
+      : customLocation.trim()
+      ? `School Ground (${customLocation.trim()})`
+      : "School Ground";
+
+    const matchedSlot = BREAK_TIME_SLOTS.find((s) => s.label === selectedSlot);
+    const finalTime = isCustomTime
+      ? customTime.trim()
+      : customTime.trim()
+      ? `${selectedSlot} - ${customTime.trim()} (${matchedSlot?.time || ""})`
+      : `${selectedSlot} (${matchedSlot?.time || ""})`;
 
     setIsSubmitting(true);
     setErrorMsg(null);
@@ -89,10 +135,10 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
         quantity: i.quantity,
         storeId: i.storeId,
       })),
-      pickupLocation: `${selectedLocation} (${selectedSlot})`,
-      preferredTime: selectedSlot,
+      pickupLocation: `${finalLocation} • ${finalTime}`,
+      preferredTime: finalTime,
       paymentMethod,
-      referenceNumber: paymentMethod === "GCASH" ? gcashRef.trim() : undefined,
+      referenceNumber: undefined,
       notes: notes.trim() || undefined,
     });
 
@@ -100,6 +146,10 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
 
     if (result.success && result.orderNumber) {
       clearCart();
+      setConfirmedDetails({
+        location: finalLocation,
+        schedule: finalTime,
+      });
       setConfirmedOrderNumber(result.orderNumber);
 
       // Track order count for buyer: pop up rating once when they have ordered 3 times
@@ -155,17 +205,19 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
             <div className="flex items-center justify-between py-2.5">
               <span className="text-muted">Pickup Location</span>
               <span className="font-semibold text-ink text-right max-w-[200px] truncate">
-                {selectedLocation}
+                {confirmedDetails?.location || selectedLocation}
               </span>
             </div>
             <div className="flex items-center justify-between py-2.5">
               <span className="text-muted">Schedule</span>
-              <span className="font-semibold text-ink">{selectedSlot}</span>
+              <span className="font-semibold text-ink text-right max-w-[200px] truncate">
+                {confirmedDetails?.schedule || selectedSlot}
+              </span>
             </div>
             <div className="flex items-center justify-between pt-2.5">
               <span className="text-muted">Payment</span>
               <span className="font-semibold text-ink">
-                {paymentMethod === "CASH_ON_PICKUP" ? "Cash on Pickup" : `GCash (${gcashRef})`}
+                Cash on Pickup (COP)
               </span>
             </div>
           </div>
@@ -283,11 +335,16 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
         <div className="lg:col-span-7 flex flex-col gap-6">
           {/* 1. Pickup Location Section */}
           <section className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 sm:p-6 shadow-sm">
-            <div className="flex items-center gap-2 border-b border-line pb-3">
-              <MapPin className="h-4 w-4 text-kita-green" />
-              <h2 className="font-display text-sm font-bold text-ink">
-                1. Select Campus Pickup Point
-              </h2>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-kita-green" />
+                <h2 className="font-display text-sm font-bold text-ink">
+                  1. Select Campus Pickup Point
+                </h2>
+              </div>
+              <span className="text-[11px] font-semibold text-muted">
+                Campus Handoff Spot
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -297,35 +354,86 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
                   <button
                     key={loc.id}
                     type="button"
-                    onClick={() => setSelectedLocation(loc.name)}
-                    className={`flex flex-col text-left p-3.5 rounded-xl border transition-all ${
+                    onClick={() => {
+                      setSelectedLocation(loc.name);
+                      if (loc.id === "custom_location") {
+                        const el = document.getElementById("custom-location-input");
+                        el?.focus();
+                      }
+                    }}
+                    className={`flex items-start justify-between p-3.5 rounded-xl border transition-all text-left ${
                       isSelected
                         ? "border-kita-green bg-kita-green-soft/40 ring-1 ring-kita-green"
                         : "border-line bg-paper/60 hover:bg-paper hover:border-line-strong"
                     }`}
                   >
-                    <span className="font-bold text-xs text-ink leading-tight">
-                      {loc.name}
-                    </span>
-                    <span className="text-xs text-muted mt-1">
-                      {loc.detail}
-                    </span>
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs text-ink leading-tight">
+                        {loc.name}
+                      </span>
+                      <span className="text-xs text-muted mt-1">
+                        {loc.detail}
+                      </span>
+                    </div>
+                    {isSelected && (
+                      <div className="flex h-5 w-5 items-center justify-center rounded-full bg-kita-green text-white text-xs font-bold shadow-xs flex-shrink-0 ml-2">
+                        ✓
+                      </div>
+                    )}
                   </button>
                 );
               })}
+            </div>
+
+            {/* Custom / Buyer's Preferred Location Input */}
+            <div className="flex flex-col gap-1.5 pt-3 border-t border-line mt-1">
+              <label htmlFor="custom-location-input" className="text-xs font-bold text-ink flex items-center justify-between">
+                <span>
+                  Buyer's Preferred Location / Spot{" "}
+                  {selectedLocation === "Custom / Preferred Location" ? (
+                    <span className="text-destructive">*</span>
+                  ) : (
+                    <span className="text-muted font-normal">(Optional spot or landmark)</span>
+                  )}
+                </span>
+                {selectedLocation === "Custom / Preferred Location" && (
+                  <span className="text-[11px] font-bold text-kita-green">Custom Location Active</span>
+                )}
+              </label>
+              <Input
+                id="custom-location-input"
+                value={customLocation}
+                onChange={(e) => setCustomLocation(e.target.value)}
+                placeholder={
+                  selectedLocation === "Custom / Preferred Location"
+                    ? "Input your specific meeting spot (e.g. Building A Room 204, Beside Flagpole, Grandstand)..."
+                    : "Optional: specify your preferred spot or landmark (e.g. Near Grandstand, Beside Flagpole, Bench 3)..."
+                }
+                className="h-10 text-xs rounded-xl bg-paper border-line focus:bg-surface transition-colors"
+              />
+              <span className="text-[11px] text-muted">
+                {selectedLocation === "Custom / Preferred Location"
+                  ? "Input your own designated pickup location anywhere on campus."
+                  : "Specify your exact preferred spot on the School Ground or anywhere on campus where you'd like to meet the seller."}
+              </span>
             </div>
           </section>
 
           {/* 2. Break-Time Schedule */}
           <section className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 sm:p-6 shadow-sm">
-            <div className="flex items-center gap-2 border-b border-line pb-3">
-              <Clock className="h-4 w-4 text-kita-green" />
-              <h2 className="font-display text-sm font-bold text-ink">
-                2. Break-Time Pickup Schedule
-              </h2>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-kita-green" />
+                <h2 className="font-display text-sm font-bold text-ink">
+                  2. Break-Time Pickup Schedule
+                </h2>
+              </div>
+              <span className="text-[11px] font-semibold text-muted">
+                Morning &amp; Afternoon Shifts
+              </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
               {BREAK_TIME_SLOTS.map((slot) => {
                 const isSelected = selectedSlot === slot.label;
                 return (
@@ -333,7 +441,7 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
                     key={slot.id}
                     type="button"
                     onClick={() => setSelectedSlot(slot.label)}
-                    className={`flex flex-col text-left p-3 rounded-xl border transition-all ${
+                    className={`flex flex-col text-left p-3 rounded-xl border transition-all cursor-pointer ${
                       isSelected
                         ? "border-kita-green bg-kita-green-soft/40 ring-1 ring-kita-green"
                         : "border-line bg-paper/60 hover:bg-paper hover:border-line-strong"
@@ -342,85 +450,78 @@ export function CheckoutView({ buyerName }: { buyerName: string }) {
                     <span className="font-bold text-xs text-ink leading-tight">
                       {slot.label}
                     </span>
-                    <span className="font-mono text-xs text-muted mt-1">
+                    <span className="font-mono text-[11px] text-muted mt-1">
                       {slot.time}
                     </span>
                   </button>
                 );
               })}
             </div>
+
+            {/* Custom / Buyer's Preferred Time Input */}
+            <div className="flex flex-col gap-1.5 pt-3 border-t border-line mt-1">
+              <label htmlFor="custom-time-input" className="text-xs font-bold text-ink flex items-center justify-between">
+                <span>
+                  Buyer's Preferred Time{" "}
+                  {selectedSlot === "Custom / Preferred Time" ? (
+                    <span className="text-destructive">*</span>
+                  ) : (
+                    <span className="text-muted font-normal">(Optional exact time note)</span>
+                  )}
+                </span>
+                {selectedSlot === "Custom / Preferred Time" && (
+                  <span className="text-[11px] font-bold text-kita-green">Custom Time Active</span>
+                )}
+              </label>
+              <Input
+                id="custom-time-input"
+                value={customTime}
+                onChange={(e) => setCustomTime(e.target.value)}
+                placeholder={
+                  selectedSlot === "Custom / Preferred Time"
+                    ? "Input your own preferred pickup time (e.g. 10:15 AM, 1:30 PM vacant period, after 5 PM)..."
+                    : "e.g. 8:30 AM sharp, during first 5 minutes of recess..."
+                }
+                className="h-10 text-xs rounded-xl bg-paper border-line focus:bg-surface transition-colors"
+              />
+              <span className="text-[11px] text-muted">
+                {selectedSlot === "Custom / Preferred Time"
+                  ? "The student seller will prepare and deliver your items at your requested preferred time."
+                  : "Coordinate an exact handoff minute or custom schedule with the student seller."}
+              </span>
+            </div>
           </section>
 
           {/* 3. Payment Method */}
-          <section className="flex flex-col gap-4 rounded-2xl border border-line bg-surface p-5 sm:p-6 shadow-sm">
-            <div className="flex items-center gap-2 border-b border-line pb-3">
-              <CreditCard className="h-4 w-4 text-kita-green" />
-              <h2 className="font-display text-sm font-bold text-ink">
-                3. Payment Method
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("CASH_ON_PICKUP")}
-                className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all text-left ${
-                  paymentMethod === "CASH_ON_PICKUP"
-                    ? "border-kita-green bg-kita-green-soft/40 ring-1 ring-kita-green"
-                    : "border-line bg-paper/60 hover:bg-paper"
-                }`}
-              >
-                <Banknote className="h-4 w-4 text-kita-green mt-0.5 flex-shrink-0" />
-                <div className="flex flex-col">
-                  <span className="font-bold text-xs text-ink">Cash on Pickup (COP)</span>
-                  <span className="text-xs text-muted leading-relaxed mt-0.5">
-                    Pay exact change directly to the seller during break handoff.
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPaymentMethod("GCASH")}
-                className={`flex items-start gap-3 p-3.5 rounded-xl border transition-all text-left ${
-                  paymentMethod === "GCASH"
-                    ? "border-kita-green bg-kita-green-soft/40 ring-1 ring-kita-green"
-                    : "border-line bg-paper/60 hover:bg-paper"
-                }`}
-              >
-                <CreditCard className="h-4 w-4 text-kita-green mt-0.5 flex-shrink-0" />
-                <div className="flex flex-col">
-                  <span className="font-bold text-xs text-ink">GCash Pre-Payment</span>
-                  <span className="text-xs text-muted leading-relaxed mt-0.5">
-                    Send payment via GCash and enter your reference number.
-                  </span>
-                </div>
-              </button>
-            </div>
-
-            {/* GCash Details Input if selected */}
-            {paymentMethod === "GCASH" && (
-              <div className="flex flex-col gap-3 rounded-xl border border-line bg-paper p-4 text-xs animate-in fade-in duration-200">
-                <div className="flex items-center justify-between border-b border-line pb-2">
-                  <span className="font-bold text-ink">Student Seller GCash Account</span>
-                  <span className="font-mono text-kita-green font-bold">0917-882-9411</span>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="gcash-ref" className="font-bold text-ink text-xs">
-                    GCash Reference Number (13 digits) *
-                  </label>
-                  <input
-                    id="gcash-ref"
-                    type="text"
-                    required
-                    value={gcashRef}
-                    onChange={(e) => setGcashRef(e.target.value)}
-                    placeholder="e.g. 1009847192834"
-                    className="h-10 w-full rounded-lg border border-line bg-surface px-3 font-mono text-xs font-semibold text-ink placeholder:text-muted/60 focus:border-kita-green focus:outline-none transition-colors"
-                  />
-                </div>
+          <section className="flex flex-col gap-3 rounded-2xl border border-line bg-surface p-5 sm:p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <Banknote className="h-4 w-4 text-kita-green" />
+                <h2 className="font-display text-sm font-bold text-ink">
+                  3. Payment Method
+                </h2>
               </div>
-            )}
+              <span className="rounded-full bg-kita-green-soft px-2.5 py-0.5 text-[11px] font-bold text-kita-green">
+                Cash on Pickup
+              </span>
+            </div>
+
+            <div className="flex items-start gap-3.5 p-4 rounded-xl border border-kita-green bg-kita-green-soft/30 ring-1 ring-kita-green">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-kita-green text-white flex-shrink-0 mt-0.5">
+                <Banknote className="h-5 w-5" />
+              </div>
+              <div className="flex flex-col">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-xs sm:text-sm text-ink">Cash on Pickup (COP)</span>
+                  <span className="rounded-md bg-kita-green/10 text-kita-green font-bold text-[10px] px-1.5 py-0.5">
+                    Standard Method
+                  </span>
+                </div>
+                <span className="text-xs text-muted leading-relaxed mt-1">
+                  Pay exact change directly to the seller during break handoff.
+                </span>
+              </div>
+            </div>
           </section>
 
           {/* 4. Notes / Instructions */}

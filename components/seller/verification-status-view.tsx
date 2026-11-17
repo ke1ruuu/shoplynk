@@ -190,13 +190,13 @@ export function VerificationStatusView({
                   {isApproved ? "✓" : isRejected ? "!" : "2"}
                 </div>
                 <div className="flex flex-col">
-                  <span className="font-bold text-ink text-sm">2. Admin ID &amp; Fee Inspection</span>
+                  <span className="font-bold text-ink text-sm">2. Admin ID &amp; Credential Review</span>
                   <span className="text-muted text-xs">
                     {isApproved
-                      ? "Approved by School Treasury"
+                      ? "Approved by Campus Administrator"
                       : isRejected
                       ? "Revision requested by Admin"
-                      : "Verifying ID & ₱50 accreditation fee"}
+                      : "Verifying student ID credentials"}
                   </span>
                 </div>
               </div>
